@@ -1,0 +1,337 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+       <!-- Bump Spring Boot parent to pick up security fixes in Spring Framework and transitive components. -->
+    <version>3.4.10</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <groupId>com.recipe.ai</groupId>
+    <artifactId>recipe-generator-service</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>recipe-generator-service</name>
+    <description>Microservice for AI recipe generation using Gemini API</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <netty.version>4.2.7.Final</netty.version>
+    </properties>
+
+    <!-- Short-term dependency overrides to address known CVEs in transitive libraries.
+         These are conservative, patch-level bumps intended to reduce reported vulnerabilities
+         without performing a full major-version migration. A follow-up PR can expand
+         upgrades after larger compatibility testing. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>2.5</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hsqldb</groupId>
+                <artifactId>hsqldb</artifactId>
+                <version>2.7.4</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>42.7.8</version>
+            </dependency>
+            <!-- Security overrides: pin embedded Tomcat to the patched release recommended by the advisory
+                 (CVE-2025-48989 recommends 10.1.44). Using the first patched Tomcat minimizes the need for a
+                 parent (Spring Boot) upgrade while Dependabot prepares parent upgrade PRs. -->
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>10.1.47</version>
+            </dependency>
+            <!-- Also pin catalina coordinates to match the patched series -->
+            <dependency>
+                <groupId>org.apache.tomcat</groupId>
+                <artifactId>tomcat-catalina</artifactId>
+                <version>11.0.13</version>
+            </dependency>
+            <!-- Pin Netty to a patched release to remediate CVEs affecting older 4.1.x releases. -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-common</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-handler</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-http</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-http2</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-buffer</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-transport</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-resolver</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-resolver-dns</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-resolver-dns-native-macos</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-handler-proxy</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-socks</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-dns</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <!-- NOTE: Removed explicit Spring Framework pins to allow the Spring Boot parent
+                 (managed by the <parent> section above) to supply compatible, published
+                 Spring Framework patch versions. This avoids local resolution failures for
+                 unreleased direct pins while we verify which patch release is available
+                 in Maven Central. If a targeted explicit pin is later required, we will
+                 add it back with a confirmed released version. -->
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Spring Boot Starter Web: Includes Tomcat and Spring Web MVC -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Actuator: Production-ready features (health checks, metrics) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Logback JSON encoder for structured logging in Cloud Logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.0</version>
+        </dependency>
+
+        <!-- Add WebClient for making non-blocking HTTP calls to the Gemini API -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- Test dependencies (JUnit 5, Mockito, AssertJ) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Use OkHttp MockWebServer for lightweight HTTP stubbing in integration tests -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>5.3.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Firebase Admin SDK for token verification -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.3.0</version>
+        </dependency>
+
+        <!-- Spring Security for securing REST endpoints -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Jakarta Validation for DTO validation and schema annotations -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Explicitly pin xmlunit-core for test scope to address Dependabot alert CVE-2024-31573 -->
+        <dependency>
+            <groupId>org.xmlunit</groupId>
+            <artifactId>xmlunit-core</artifactId>
+            <version>2.11.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Static analysis plugins -->
+            <!-- Run Checkstyle first, then a small antrun wrapper to fail only on 'error' severity. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                <!-- Don't fail the build on every Checkstyle violation here; we'll fail
+                    the build only if there are 'error' severity violations using a
+                    follow-up check. This lets us treat warnings as non-blocking.
+                -->
+                <failOnViolation>false</failOnViolation>
+                    <configLocation>google_checks.xml</configLocation>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Add a guarded antrun check that fails the build during 'verify' if Checkstyle reports severity="error".
+                 This uses a simple shell exec that exits non-zero when errors are present. Keep this optional: it
+                 will not run on platforms where 'sh' is not available.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>pom-fail-on-checkstyle-error</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <echo message="Running POM-level check: fail if checkstyle error severity present"/>
+                                <exec executable="sh" failonerror="true">
+                                    <arg value="-c"/>
+                                    <arg value="${project.basedir}/ci/checkstyle-fail-if-errors.sh"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <!-- upgrade to a published release that supports newer JDKs -->
+                <version>4.4.2</version>
+                <configuration>
+                    <!-- Allow skipping SpotBugs via property. CI can set -Dspotbugs.skip=false explicitly. -->
+                    <skip>${spotbugs.skip}</skip>
+                    <failOnError>true</failOnError>
+                    <effort>Max</effort>
+                    <!-- Only consider higher-severity findings for failing the build -->
+                    <threshold>High</threshold>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <!-- upgrade to a more recent pmd plugin which bundles newer PMD/ASM -->
+                <version>3.28.0</version>
+                <configuration>
+                    <!-- PMD will run as configured; do not skip by default -->
+                <!-- Set a minimum priority to consider for PMD violations (1=highest).
+                    We will only fail the build for more serious issues (priority < 3).
+                -->
+                <failOnViolation>true</failOnViolation>
+                <minimumPriority>3</minimumPriority>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- Configure deployment to GitHub Packages -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub OWNER Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/theandiman/recipe-generato-stack-a</url>
+        </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>GitHub OWNER Apache Maven Snapshot Repository</name>
+            <url>https://maven.pkg.github.com/theandiman/recipe-generato-stack-a</url>
+        </snapshotRepository>
+    </distributionManagement>
+    <!-- Allow skipping SpotBugs on environments where SpotBugs cannot analyze the classfile version (e.g. very new JDKs). -->
+    <profiles>
+        <profile>
+            <id>skip-spotbugs-on-new-jdk</id>
+            <activation>
+                <!-- Activate when running on Java 18+; this uses the JDK's spec version detection -->
+                <jdk>[18,)</jdk>
+            </activation>
+            <properties>
+                <spotbugs.skip>true</spotbugs.skip>
+            </properties>
+        </profile>
+    </profiles>
+</project>

@@ -1,0 +1,12 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          { "text": "Some text part" },
+          { "inlineData": { "mimeType": "image/png", "data": "iVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUAiVBORw0KGgoAAAANSUhEUgAAAAUA" } }
+        ]
+      }
+    }
+  ]
+}

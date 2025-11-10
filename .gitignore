@@ -1,0 +1,39 @@
+.env
+target/
+app.log
+node_modules/
+frontend/node_modules/
+frontend-dev.log
+tmp/
+*.log
+*.pid
+ci_artifacts/
+
+# Local frontend env file (may contain tokens) - do NOT commit
+frontend/.env.local
+
+# Ignore generated frontend build artifacts
+frontend/dist/
+
+# If other build outputs appear, ignore them
+dist/
+
+# IDEs and editor folders
+.idea/
+.vscode/
+
+# Test reports and build logs
+target/surefire-reports/
+coverage/
+coverage-final.json
+
+# Lockfiles and package metadata (avoid committing nested node_modules artifacts)
+**/node_modules/**/package-lock.json
+**/node_modules/**/.package-lock.json
+package-lock.json
+# But allow functions/package-lock.json - required by firebase-hosting.yml CI
+!functions/package-lock.json
+
+# OS files
+.DS_Store
+
