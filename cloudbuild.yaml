@@ -86,7 +86,7 @@ steps:
           --memory 1Gi \
           --cpu 2 \
           --timeout 300 \
-          --max-instances 10 \
+          --max-instances 1 \
           --set-env-vars "SPRING_PROFILES_ACTIVE=production,firebase.project.id=recipe-mgmt-dev,auth.enabled=true,GOOGLE_APPLICATION_CREDENTIALS=/secrets/firebase-sa.json" \
           --update-secrets "GEMINI_API_KEY=gemini-api-key:latest,/secrets/firebase-sa.json=firebase-service-account:latest"
 
