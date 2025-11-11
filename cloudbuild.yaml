@@ -62,33 +62,9 @@ steps:
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest
 
-  # Deploy to Cloud Run - ONLY on main branch
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'deploy-backend'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        # Only deploy on main branch
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "PR build detected (branch: $BRANCH_NAME), skipping Cloud Run deployment"
-          exit 0
-        fi
-        
-        echo "Deploying to Cloud Run..."
-        # Service is public (--allow-unauthenticated) for ease of access
-        # Authentication is enforced at the application level via Firebase tokens
-        gcloud run deploy ${_SERVICE_NAME} \
-          --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
-          --region ${_REGION} \
-          --platform managed \
-          --allow-unauthenticated \
-          --memory 1Gi \
-          --cpu 2 \
-          --timeout 300 \
-          --max-instances 10 \
-          --set-env-vars "SPRING_PROFILES_ACTIVE=production,firebase.project.id=recipe-mgmt-dev,auth.enabled=true,GOOGLE_APPLICATION_CREDENTIALS=/secrets/firebase-sa.json" \
-          --update-secrets "GEMINI_API_KEY=gemini-api-key:latest,/secrets/firebase-sa.json=firebase-service-account:latest"
+  # Note: Cloud Run deployment is managed by Terraform
+  # After image is pushed, trigger Terraform apply to update the service
+  # See: recipe-management-infrastructure/terraform/environments/dev/main.tf
 
 # Substitutions for different environments
 substitutions:
