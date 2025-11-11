@@ -1,0 +1,46 @@
+# Gitleaks configuration for Recipe Management Services
+title = "Recipe Management Services Secret Scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "firebase-api-key"
+description = "Firebase API Key"
+regex = '''AIza[0-9A-Za-z-_]{35}'''
+tags = ["firebase", "api-key"]
+
+[[rules]]
+id = "firebase-private-key"
+description = "Firebase Private Key"
+regex = '''-----BEGIN PRIVATE KEY-----'''
+tags = ["firebase", "private-key"]
+
+[[rules]]
+id = "gcp-service-account"
+description = "GCP Service Account JSON"
+regex = '''"type":\s*"service_account"'''
+tags = ["gcp", "service-account"]
+
+[[rules]]
+id = "gemini-api-key"
+description = "Gemini API Key"
+regex = '''AIza[0-9A-Za-z-_]{35}'''
+tags = ["google", "api-key"]
+
+[allowlist]
+description = "Allowlist for false positives"
+paths = [
+  '''pom.xml''',
+  '''build.gradle''',
+  '''package-lock.json''',
+]
+
+regexes = [
+  '''GEMINI_API_KEY''',          # Environment variable name
+  '''GOOGLE_APPLICATION_CREDENTIALS''',  # Environment variable name
+  '''FIREBASE_PROJECT_ID''',     # Environment variable name
+  '''example\.com''',
+  '''localhost''',
+  '''test-''',                   # Test data
+]
