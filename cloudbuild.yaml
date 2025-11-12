@@ -1,18 +1,18 @@
 steps:
   # Run Maven tests
-  - name: 'maven:3.9-eclipse-temurin-17'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'test-backend'
     entrypoint: 'mvn'
     args: ['test']
 
   # Run linting (Checkstyle, SpotBugs, PMD)
-  - name: 'maven:3.9-eclipse-temurin-17'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'lint-backend'
     entrypoint: 'mvn'
     args: ['verify', '-DskipTests']
 
   # Build the application JAR (skip on PR builds)
-  - name: 'maven:3.9-eclipse-temurin-17'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'build-backend'
     entrypoint: 'bash'
     args:
