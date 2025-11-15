@@ -23,6 +23,11 @@
 
     <repositories>
         <repository>
+            <id>gcp-maven-proxy</id>
+            <name>GCP Artifact Registry Maven Proxy</name>
+            <url>https://europe-west2-maven.pkg.dev/recipe-mgmt-dev/gh-remote-maven</url>
+        </repository>
+        <repository>
             <id>github-recipe-management-shared</id>
             <url>https://maven.pkg.github.com/theandiman/recipe-management-shared</url>
         </repository>
