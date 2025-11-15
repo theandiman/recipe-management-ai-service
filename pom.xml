@@ -21,6 +21,13 @@
         <netty.version>4.2.7.Final</netty.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>github-recipe-management-shared</id>
+            <url>https://maven.pkg.github.com/theandiman/recipe-management-shared</url>
+        </repository>
+    </repositories>
+
     <!-- Short-term dependency overrides to address known CVEs in transitive libraries.
          These are conservative, patch-level bumps intended to reduce reported vulnerabilities
          without performing a full major-version migration. A follow-up PR can expand
@@ -189,6 +196,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Shared models (recipe-management-shared) -->
+        <dependency>
+            <groupId>com.recipe</groupId>
+            <artifactId>recipe-management-shared</artifactId>
+            <version>1.0.9</version>
         </dependency>
 
         <!-- Explicitly pin xmlunit-core for test scope to address Dependabot alert CVE-2024-31573 -->
