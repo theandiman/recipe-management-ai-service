@@ -6,10 +6,10 @@ steps:
     args:
       - '-c'
       - |
-        mkdir -p /root/.m2
+        mkdir -p /workspace/.m2
         # Generate a minimal Maven settings.xml with server credentials for Artifact Registry
         # This avoids reliance on gcloud's print-settings subcommand which may not be available
-        cat > /root/.m2/settings.xml <<'SETTINGS'
+        cat > /workspace/.m2/settings.xml <<'SETTINGS'
         <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
@@ -22,20 +22,35 @@ steps:
           </servers>
         </settings>
         SETTINGS
-        # Replace placeholder with runtime access token
-        sed -i "s|@@ACCESS_TOKEN@@|$(gcloud auth print-access-token)|g" /root/.m2/settings.xml
+        # Replace placeholder with runtime access token (error out if token cannot be retrieved)
+        ACCESS_TOKEN=$(gcloud auth print-access-token) || {
+          echo "ERROR: unable to generate access token via gcloud auth print-access-token"; exit 1;
+        }
+        sed -i "s|@@ACCESS_TOKEN@@|${ACCESS_TOKEN}|g" /workspace/.m2/settings.xml
+        # Verify the token is populated; fail if empty to avoid unauthorized Maven requests
+        if ! grep -q -E "<password>[^<]+</password>" /workspace/.m2/settings.xml; then
+          echo "ERROR: settings.xml not properly configured with access token"
+          exit 1
+        fi
 
   # Run Maven tests
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'test-backend'
     entrypoint: 'mvn'
-    args: ['test']
+    args:
+      - '-s'
+      - '/workspace/.m2/settings.xml'
+      - 'test'
 
   # Run linting (Checkstyle, SpotBugs, PMD)
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'lint-backend'
     entrypoint: 'mvn'
-    args: ['verify', '-DskipTests']
+    args:
+      - '-s'
+      - '/workspace/.m2/settings.xml'
+      - 'verify'
+      - '-DskipTests'
 
   # Build the application JAR (skip on PR builds)
   - name: 'maven:3.9-eclipse-temurin-21'
@@ -52,7 +67,7 @@ steps:
         fi
         
         echo "Building application package..."
-        mvn package -DskipTests
+        mvn -s /workspace/.m2/settings.xml package -DskipTests
 
   # Build Docker image - ONLY on main branch
   - name: 'gcr.io/cloud-builders/docker'
