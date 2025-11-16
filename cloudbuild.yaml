@@ -23,10 +23,8 @@ steps:
         </settings>
         SETTINGS
         # Replace placeholder with runtime access token (error out if token cannot be retrieved)
-        ACCESS_TOKEN=$(gcloud auth print-access-token) || {
-          echo "ERROR: unable to generate access token via gcloud auth print-access-token"; exit 1;
-        }
-        sed -i "s|@@ACCESS_TOKEN@@|${ACCESS_TOKEN}|g" /workspace/.m2/settings.xml
+        # Replace placeholder in the settings.xml with a runtime access token
+        sed -i "s|@@ACCESS_TOKEN@@|$(gcloud auth print-access-token)|g" /workspace/.m2/settings.xml
         # Verify the token is populated; fail if empty to avoid unauthorized Maven requests
         if ! grep -q -E "<password>[^<]+</password>" /workspace/.m2/settings.xml; then
           echo "ERROR: settings.xml not properly configured with access token"
