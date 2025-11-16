@@ -19,7 +19,9 @@ public class CorsConfig implements WebMvcConfigurer {
                     "http://localhost:5173", 
                     "http://127.0.0.1:5173",
                     "https://recipe-mgmt-dev.web.app",
-                    "https://recipe-mgmt-dev.firebaseapp.com"
+                    "https://recipe-mgmt-dev.firebaseapp.com",
+                    "https://recipe-ai-service-htubs7zkna-nw.a.run.app",
+                    "https://recipe-storage-service-htubs7zkna-nw.a.run.app"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("Authorization", "Content-Type", "Accept")

@@ -262,6 +262,20 @@ jobs:
           terraform init
           terraform apply -auto-approve \
             -var="image_url=europe-west2-docker.pkg.dev/recipe-mgmt-dev/recipe-ai/recipe-ai-service:${{ github.sha }}"
+### Using GCP Artifact Registry Maven Proxy (optional)
+
+This project can be configured to use the GCP Artifact Registry Maven proxy that caches GitHub Packages dependencies in GCP.
+
+Prerequisites:
+- The infra project must create or have an existing Maven remote repo (e.g., `gh-remote-maven`) and a `gh-packages-pat` Secret Manager secret with a GitHub PAT.
+- The infra PR must provide IAM access for the Cloud Build SA to the repo (roles/artifactregistry.reader) and the secret (roles/secretmanager.secretAccessor).
+  
+> Note: To add the GitHub Packages PAT to Secret Manager, use the infra repo's GitHub Actions workflow `Add GitHub Packages PAT to GCP Secret Manager` (manual). See `recipe-management-infrastructure` README for instructions — you can set `create_if_missing=true` to have the workflow create the secret object if needed.
+
+If the infra repo has the above configuration, Cloud Build will automatically use the proxy when builds run (see `cloudbuild.yaml` step that writes `~/.m2/settings.xml` with a token).
+
+This avoids needing to place GitHub credentials in the CI environment, and instead relies on GCP-managed access via Secret Manager and Artifact Registry.
+
 ```
 
 ## Testing Deployment
