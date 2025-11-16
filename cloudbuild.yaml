@@ -7,20 +7,10 @@ steps:
       - '-c'
       - |
         mkdir -p /root/.m2
-        cat > /root/.m2/settings.xml <<EOF
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>gcp-maven-proxy</id>
-                <username>oauth2accesstoken</username>
-                <password>@@ACCESS_TOKEN@@</password>
-              </server>
-            </servers>
-          </settings>
-        EOF
-        sed -i "s|@@ACCESS_TOKEN@@|$(gcloud auth print-access-token)|g" /root/.m2/settings.xml
+        # Use Google Cloud helper to generate Maven settings for Artifact Registry
+        gcloud artifacts print-settings maven --project=${PROJECT_ID} --repository=${_ARTIFACT_REGISTRY_REPO} > /root/.m2/settings.xml
+        # Replace password placeholder in the generated settings.xml with a runtime token
+        sed -i "s|<password>.*</password>|<password>$(gcloud auth print-access-token)</password>|g" /root/.m2/settings.xml
 
   # Run Maven tests
   - name: 'maven:3.9-eclipse-temurin-21'
