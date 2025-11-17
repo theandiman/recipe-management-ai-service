@@ -1,37 +1,55 @@
 package com.recipe.ai.schema;
 
-import com.recipe.ai.model.RecipeDTO;
-
-import java.util.Map;
+import static com.recipe.ai.schema.GeminiSchemaBuilder.*;
 
 /**
- * Defines the JSON schema for recipe generation using the Gemini API.
- * This schema ensures structured, consistent recipe output.
- * 
- * @deprecated Use {@link RecipeDTO#getSchema()} directly instead.
- * This class is maintained for backwards compatibility.
+ * Schema helper for Recipe objects used by the Gemini model.
+ * Previously this lived in RecipeDTO.getSchema(); the schema is kept local to AI service
+ * to define how we want the model to emit JSON for subsequent parsing into shared Recipe.
  */
-@Deprecated
-public class RecipeSchema {
+public final class RecipeSchema {
 
-    /**
-     * Returns the complete recipe schema for use with Gemini API.
-     * Delegates to RecipeDTO.getSchema() for the actual schema definition.
-     * 
-     * @return The recipe schema as a JsonSchema object
-     */
+    private RecipeSchema() { /* static utility */ }
+
     public static JsonSchema getSchema() {
-        return RecipeDTO.getSchema();
-    }
+        // Build small reusable sub-schemas for nutrition and tips
+        // Inline nutrition values are created where needed - no top-level builder required here
 
-    /**
-     * Returns the complete recipe schema as a Map for backwards compatibility.
-     * 
-     * @return The recipe schema map
-     * @deprecated Use {@link #getSchema()} to get JsonSchema instead.
-     */
-    @Deprecated
-    public static Map<String, Object> getSchemaAsMap() {
-        return RecipeDTO.getSchema().asMap();
+        GeminiSchemaBuilder nutritionalInfoBuilder = object()
+            .property("perServing", object().property("calories", number()).property("protein", number()).property("carbohydrates", number()).property("fat", number()).property("fiber", number()).property("sodium", number()))
+            .property("total", object().property("calories", number()).property("protein", number()).property("carbohydrates", number()).property("fat", number()).property("fiber", number()).property("sodium", number()));
+
+        GeminiSchemaBuilder tipsBuilder = object()
+            .property("substitutions", array().items(string()))
+            .property("makeAhead", string())
+            .property("storage", string())
+            .property("reheating", string())
+            .property("variations", array().items(string()));
+
+        return object()
+            .property("recipeName", string()
+                .description("The creative name of the recipe."))
+            .property("description", string()
+                .description("A brief, appealing description of the dish."))
+            .property("ingredients", array()
+                .description("A list of ingredients with quantities.")
+                .items(string()))
+            .property("instructions", array()
+                .description("Step-by-step instructions for preparation.")
+                .items(string()))
+            .property("prepTime", string()
+                .description("Estimated preparation time (e.g., '15 minutes')."))
+            .property("cookTime", string()
+                .description("Estimated cooking time (e.g., '20 minutes')."))
+            .property("estimatedTime", string()
+                .description("Human-readable total time estimate (e.g., '35 minutes' or '1 hour')."))
+            .property("estimatedTimeMinutes", number()
+                .description("Total estimated time in minutes as an integer."))
+            .property("servings", string()
+                .description("Number of servings the recipe yields (e.g., '4')."))
+            .property("nutritionalInfo", nutritionalInfoBuilder)
+            .property("tips", tipsBuilder)
+            .required("recipeName", "ingredients", "instructions", "servings")
+            .build();
     }
 }

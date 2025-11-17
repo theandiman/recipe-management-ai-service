@@ -2,7 +2,7 @@ package com.recipe.ai.controller;
 
 import com.recipe.ai.service.RecipeService;
 import com.recipe.ai.model.Units;
-import com.recipe.ai.model.RecipeDTO;
+import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,10 +34,8 @@ public class RecipeControllerTest {
         }
 
         @Override
-        public RecipeDTO generateRecipeDTO(RecipeGenerationRequest request) {
-            RecipeDTO dto = new RecipeDTO();
-            dto.setRecipeName("Test Recipe");
-            dto.setServings("4");
+        public Recipe generateRecipeModel(RecipeGenerationRequest request) {
+            Recipe dto = Recipe.builder().recipeName("Test Recipe").servings(4).build();
             return dto;
         }
 
@@ -63,11 +61,11 @@ public class RecipeControllerTest {
         request.setPrompt("");
         request.setPantryItems(List.of());
         
-        ResponseEntity<RecipeDTO> resp = controller.generateRecipe(request);
+    ResponseEntity<Recipe> resp = controller.generateRecipe(request);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody()).isNotNull();
-        assertThat(resp.getBody().getRecipeName()).isEqualTo("Test Recipe");
+    assertThat(resp.getBody().getRecipeName()).isEqualTo("Test Recipe");
     }
 
     @Test
