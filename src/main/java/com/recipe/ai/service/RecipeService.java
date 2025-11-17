@@ -2,7 +2,7 @@ package com.recipe.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recipe.shared.model.Recipe;
-import com.recipe.ai.schema.JsonSchema;
+import com.recipe.shared.schema.JsonSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +50,7 @@ public class RecipeService {
     private final ObjectMapper objectMapper;
 
     // Defines the strict JSON schema for the recipe output
-    private static final JsonSchema RECIPE_SCHEMA = com.recipe.ai.schema.RecipeSchema.getSchema();
+    private static final JsonSchema RECIPE_SCHEMA = com.recipe.shared.schema.RecipeSchema.getSchema();
 
     // System instructions guide the model's persona and output format
     // Externalized via application properties: gemini.system.prompt
@@ -585,7 +585,10 @@ public class RecipeService {
                 : pantryItems.stream().map(i -> "1 x " + i).toList());
         base.put("instructions", List.of("Toast the bread.", "Spread butter on the toast.", "Serve immediately."));
         base.put("prepTime", "5 minutes");
-        base.put("servings", "1");
+        base.put("prepTimeMinutes", 5);
+        base.put("cookTimeMinutes", 0);
+        base.put("totalTimeMinutes", 5);
+        base.put("servings", 1);
         // Only add a placeholder image if image generation is enabled or we explicitly want a placeholder
         if (geminiImageEnabled) {
             base.put("imageUrl", generatePlaceholderDataUrl("Simple Toast"));

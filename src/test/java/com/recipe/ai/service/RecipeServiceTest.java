@@ -1,7 +1,7 @@
 package com.recipe.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recipe.ai.schema.JsonSchema;
+import com.recipe.shared.schema.JsonSchema;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,5 +88,29 @@ public class RecipeServiceTest {
             Assertions.assertTrue(perServingProps.containsKey(nutrient), 
                 "perServing should include " + nutrient + " field");
         }
+            // Ensure servings and prepTimeMinutes are present and typed correctly
+            Assertions.assertTrue(properties.containsKey("servings"), "Schema should include servings field");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> servingsProp = (Map<String, Object>) properties.get("servings");
+            Assertions.assertEquals("INTEGER", servingsProp.get("type"), "servings should be an INTEGER type");
+            Assertions.assertTrue(properties.containsKey("prepTimeMinutes"), "Schema should include prepTimeMinutes field");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> prepMinutesProp = (Map<String, Object>) properties.get("prepTimeMinutes");
+            Assertions.assertEquals("INTEGER", prepMinutesProp.get("type"), "prepTimeMinutes should be an INTEGER type");
+
+            // tags should be an array of strings
+            Assertions.assertTrue(properties.containsKey("tags"), "Schema should include tags field");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tagsProp = (Map<String, Object>) properties.get("tags");
+            Assertions.assertEquals("ARRAY", tagsProp.get("type"), "tags should be an ARRAY type");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> items = (Map<String, Object>) tagsProp.get("items");
+            Assertions.assertEquals("STRING", items.get("type"), "tags items should be STRING type");
+
+            // imageGeneration should be an OBJECT due to Map<String,Object>
+            Assertions.assertTrue(properties.containsKey("imageGeneration"), "Schema should include imageGeneration field");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> imageGenProp = (Map<String, Object>) properties.get("imageGeneration");
+            Assertions.assertEquals("OBJECT", imageGenProp.get("type"), "imageGeneration should be an OBJECT type");
     }
 }
