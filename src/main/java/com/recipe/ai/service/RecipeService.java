@@ -1,7 +1,7 @@
 package com.recipe.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recipe.ai.model.RecipeDTO;
+import com.recipe.shared.model.Recipe;
 import com.recipe.ai.schema.JsonSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +50,7 @@ public class RecipeService {
     private final ObjectMapper objectMapper;
 
     // Defines the strict JSON schema for the recipe output
-    private static final JsonSchema RECIPE_SCHEMA = RecipeDTO.getSchema();
+    private static final JsonSchema RECIPE_SCHEMA = com.recipe.ai.schema.RecipeSchema.getSchema();
 
     // System instructions guide the model's persona and output format
     // Externalized via application properties: gemini.system.prompt
@@ -463,8 +463,8 @@ public class RecipeService {
                                 if (geminiImageEnabled) {
                                     imageGeneration.put("status", "attempting");
                                     try {
-                                        // Convert recipe Map to RecipeDTO for richer image prompts
-                                        RecipeDTO recipeForImage = objectMapper.convertValue(obj, RecipeDTO.class);
+                                        // Convert recipe Map to shared Recipe for richer image prompts
+                                        Recipe recipeForImage = objectMapper.convertValue(obj, Recipe.class);
                                         ImageGenerationRequest imageRequest = new ImageGenerationRequest();
                                         imageRequest.setRecipe(recipeForImage);
                                         
@@ -538,16 +538,16 @@ public class RecipeService {
     }
 
     /**
-     * Generate a recipe using a RecipeGenerationRequest DTO and return a RecipeDTO.
+    * Generate a recipe using a RecipeGenerationRequest DTO and return a shared Recipe model.
      * This is the new recommended method for type-safe recipe generation.
      * 
      * @param request The recipe generation request containing all parameters
-     * @return A RecipeDTO object, or null on failure
+    * @return A shared Recipe object, or null on failure
      */
-    public RecipeDTO generateRecipeDTO(RecipeGenerationRequest request) {
+    public Recipe generateRecipeModel(RecipeGenerationRequest request) {
         // Null check for request parameter
         if (request == null) {
-            log.warn("generateRecipeDTO called with null request");
+            log.warn("generateRecipeModel called with null request");
             return null;
         }
 
@@ -567,9 +567,9 @@ public class RecipeService {
             return null;
         }
 
-        // Parse JSON string into RecipeDTO
+        // Parse JSON string into shared Recipe model
         try {
-            return objectMapper.readValue(recipeJson, RecipeDTO.class);
+            return objectMapper.readValue(recipeJson, Recipe.class);
         } catch (Exception e) {
             log.error("Failed to parse recipe JSON into DTO: {}", e.getMessage(), e);
             return null;
@@ -727,7 +727,7 @@ public class RecipeService {
 
         // If recipe context is provided, create a detailed, descriptive prompt
         if (request.getRecipe() != null) {
-            RecipeDTO recipe = request.getRecipe();
+            Recipe recipe = request.getRecipe();
             log.debug("buildImagePrompt: Using recipe context - name: {}, ingredients: {}", 
                      recipe.getRecipeName(), 
                      recipe.getIngredients() != null ? recipe.getIngredients().size() : 0);

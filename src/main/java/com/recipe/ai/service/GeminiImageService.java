@@ -2,7 +2,7 @@ package com.recipe.ai.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recipe.ai.model.RecipeDTO;
+import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.ImageGenerationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,7 +129,7 @@ public class GeminiImageService {
 
     private String buildPromptFromRequest(ImageGenerationRequest request) {
         if (request.getRecipe() != null) {
-            RecipeDTO recipe = request.getRecipe();
+            Recipe recipe = request.getRecipe();
             StringBuilder sb = new StringBuilder("Generate an illustrative image for this recipe: ");
             if (recipe.getRecipeName() != null) {
                 sb.append(recipe.getRecipeName());

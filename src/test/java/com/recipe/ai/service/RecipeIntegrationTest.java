@@ -53,8 +53,8 @@ public class RecipeIntegrationTest {
 
     @Test
     public void testEndToEnd_withWireMock() throws Exception {
-        // Sample Gemini response body (the service extracts parts[0].text and parses it into RecipeDTO)
-        // The response must be a valid recipe JSON that can be deserialized into RecipeDTO
+    // Sample Gemini response body (the service extracts parts[0].text and parses it into shared Recipe)
+    // The response must be a valid recipe JSON that can be deserialized into shared Recipe
         String recipeJson = "{\"recipeName\":\"Integration Test Recipe\",\"description\":\"A test recipe\",\"ingredients\":[\"egg\"],\"instructions\":[\"Mix\",\"Cook\"],\"servings\":\"1\"}";
         String geminiResponse = "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"" + recipeJson.replace("\"", "\\\"") + "\"}]}}]}";
 
@@ -73,7 +73,7 @@ public class RecipeIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         String body = "{\"prompt\":\"Make a test\",\"pantryItems\":[\"egg\"]}";
         
-        // Controller now returns RecipeDTO as JSON object
+        // Controller now returns a shared Recipe JSON object
         ResponseEntity<String> resp = rt.postForEntity(url, new HttpEntity<>(body, headers), String.class);
 
         assertTrue(resp.getStatusCode().is2xxSuccessful());

@@ -1,7 +1,7 @@
 package com.recipe.ai.controller;
 
 import com.recipe.ai.service.RecipeService;
-import com.recipe.ai.model.RecipeDTO;
+import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
 import org.springframework.http.HttpStatus;
@@ -34,12 +34,12 @@ public class RecipeController {
      * Accepts a RecipeGenerationRequest DTO for type-safe input handling.
      *
      * @param request The recipe generation request DTO
-     * @return The generated RecipeDTO, or an error response
+    * @return The generated shared Recipe, or an error response
      */
     @PostMapping("/generate")
-    public ResponseEntity<RecipeDTO> generateRecipe(@RequestBody RecipeGenerationRequest request) {
+    public ResponseEntity<Recipe> generateRecipe(@RequestBody RecipeGenerationRequest request) {
         try {
-            RecipeDTO recipe = recipeService.generateRecipeDTO(request);
+            Recipe recipe = recipeService.generateRecipeModel(request);
             
             if (recipe != null) {
                 return new ResponseEntity<>(recipe, HttpStatus.OK);
