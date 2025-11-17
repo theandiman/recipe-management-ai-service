@@ -50,7 +50,7 @@ steps:
       - 'verify'
       - '-DskipTests'
 
-  # Build the application JAR (skip on PR builds)
+  # Build the application JAR (CI builds artifact for Docker image; runs for PRs too)
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'build-backend'
     entrypoint: 'bash'
