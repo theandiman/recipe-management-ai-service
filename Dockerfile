@@ -1,11 +1,3 @@
-# Build stage
-FROM maven:3.9.6-eclipse-temurin-21 AS build
-WORKDIR /workspace
-COPY pom.xml ./
-COPY src ./src
-# Use dependency caching when possible
-RUN mvn -B -DskipTests package -DskipTests=true -e
-
 # Runtime stage (distroless)
 FROM debian:bookworm-slim AS runtime
 RUN useradd --system --uid 1000 --create-home --home-dir /home/appuser appuser
