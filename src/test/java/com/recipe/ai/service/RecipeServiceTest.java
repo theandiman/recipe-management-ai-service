@@ -88,15 +88,17 @@ public class RecipeServiceTest {
             Assertions.assertTrue(perServingProps.containsKey(nutrient), 
                 "perServing should include " + nutrient + " field");
         }
-            // Ensure servings and prepTimeMinutes are present and typed correctly
-            Assertions.assertTrue(properties.containsKey("servings"), "Schema should include servings field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> servingsProp = (Map<String, Object>) properties.get("servings");
-            Assertions.assertEquals("INTEGER", servingsProp.get("type"), "servings should be an INTEGER type");
-            Assertions.assertTrue(properties.containsKey("prepTimeMinutes"), "Schema should include prepTimeMinutes field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> prepMinutesProp = (Map<String, Object>) properties.get("prepTimeMinutes");
-            Assertions.assertEquals("INTEGER", prepMinutesProp.get("type"), "prepTimeMinutes should be an INTEGER type");
+            // Ensure new schema properties are present and typed correctly
+            Map.of(
+                "servings", "INTEGER",
+                "prepTimeMinutes", "INTEGER",
+                "imageGeneration", "OBJECT"
+            ).forEach((key, type) -> {
+                Assertions.assertTrue(properties.containsKey(key), "Schema should include " + key + " field");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> prop = (Map<String, Object>) properties.get(key);
+                Assertions.assertEquals(type, prop.get("type"), key + " should be of type " + type);
+            });
 
             // tags should be an array of strings
             Assertions.assertTrue(properties.containsKey("tags"), "Schema should include tags field");
@@ -106,11 +108,5 @@ public class RecipeServiceTest {
             @SuppressWarnings("unchecked")
             Map<String, Object> items = (Map<String, Object>) tagsProp.get("items");
             Assertions.assertEquals("STRING", items.get("type"), "tags items should be STRING type");
-
-            // imageGeneration should be an OBJECT due to Map<String,Object>
-            Assertions.assertTrue(properties.containsKey("imageGeneration"), "Schema should include imageGeneration field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> imageGenProp = (Map<String, Object>) properties.get("imageGeneration");
-            Assertions.assertEquals("OBJECT", imageGenProp.get("type"), "imageGeneration should be an OBJECT type");
     }
 }
