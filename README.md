@@ -1,3 +1,5 @@
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=theandiman_recipe-management-ai-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=theandiman_recipe-management-ai-service)
+
 # Recipe Management AI Service
 
 AI-powered recipe generation service using Spring Boot, Vertex AI/Gemini, and Firebase Auth.
