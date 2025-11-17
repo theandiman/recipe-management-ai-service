@@ -73,7 +73,7 @@ public class RecipeIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         String body = "{\"prompt\":\"Make a test\",\"pantryItems\":[\"egg\"]}";
         
-    // Controller now returns a shared Recipe JSON object
+        // Controller now returns a shared Recipe JSON object
         ResponseEntity<String> resp = rt.postForEntity(url, new HttpEntity<>(body, headers), String.class);
 
         assertTrue(resp.getStatusCode().is2xxSuccessful());
