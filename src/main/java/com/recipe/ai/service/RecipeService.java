@@ -551,11 +551,11 @@ public class RecipeService {
             return null;
         }
 
-    // Extract parameters from request with defaults
-    String prompt = request.getPrompt() != null ? request.getPrompt() : "";
-    List<String> pantryItems = request.getPantryItems() != null ? new java.util.ArrayList<>(request.getPantryItems()) : List.of();
-    // Handle Units enum directly, defaulting to METRIC if null
-    com.recipe.ai.model.Units units = request.getUnits() != null ? request.getUnits() : com.recipe.ai.model.Units.METRIC;
+        // Extract parameters from request with defaults
+        String prompt = request.getPrompt() != null ? request.getPrompt() : "";
+        List<String> pantryItems = request.getPantryItems() != null ? new java.util.ArrayList<>(request.getPantryItems()) : List.of();
+        // Handle Units enum directly, defaulting to METRIC if null
+        com.recipe.ai.model.Units units = request.getUnits() != null ? request.getUnits() : com.recipe.ai.model.Units.METRIC;
         List<String> dietaryPreferences = request.getDietaryPreferences() != null ? new java.util.ArrayList<>(request.getDietaryPreferences()) : List.of();
         List<String> allergies = request.getAllergies() != null ? new java.util.ArrayList<>(request.getAllergies()) : List.of();
         Integer maxTotalMinutes = request.getMaxTotalMinutes();
