@@ -50,20 +50,13 @@ steps:
       - 'verify'
       - '-DskipTests'
 
-  # Build the application JAR (skip on PR builds)
+  # Build the application JAR (CI builds artifact for Docker image; runs for PRs too)
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'build-backend'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        # Skip build on PR builds
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "PR build detected (branch: $BRANCH_NAME), skipping package step"
-          echo "Build validation complete ✓"
-          exit 0
-        fi
-        
         echo "Building application package..."
         mvn -s /workspace/.m2/settings.xml package -DskipTests
 
@@ -74,12 +67,6 @@ steps:
     args:
       - '-c'
       - |
-        # Only build image on main branch
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "PR build detected (branch: $BRANCH_NAME), skipping Docker build"
-          exit 0
-        fi
-        
         echo "Building Docker image..."
         docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
               -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest .
