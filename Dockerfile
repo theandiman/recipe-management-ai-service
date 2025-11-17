@@ -13,3 +13,5 @@ COPY --from=runtime /home/appuser/app.jar /app/app.jar
 EXPOSE 8080
 USER 1000:1000
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+# re-run CI for Dockerfile fix
