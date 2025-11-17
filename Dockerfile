@@ -3,7 +3,7 @@ FROM debian:bookworm-slim AS runtime
 RUN useradd --system --uid 1000 --create-home --home-dir /home/appuser appuser
 WORKDIR /home/appuser
 # Copy jar and set ownership to non-root user
-COPY --from=build /workspace/target/*.jar /home/appuser/app.jar
+COPY /workspace/target/*.jar /home/appuser/app.jar
 RUN chown appuser:appuser /home/appuser/app.jar && chmod 500 /home/appuser/app.jar
 
 FROM gcr.io/distroless/java21-debian12
