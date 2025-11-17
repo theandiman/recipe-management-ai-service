@@ -323,7 +323,22 @@ public class RecipeService {
 
                 } catch (WebClientResponseException wcre) {
                     int statusCode = wcre.getStatusCode().value();
-                    log.error("Gemini API returned HTTP {} on attempt {}: {}", statusCode, attempt, wcre.getMessage());
+                    // Attempt to capture response body for actionable diagnostics
+                    String respBody = null;
+                    try {
+                        respBody = wcre.getResponseBodyAsString();
+                    } catch (Exception ex) {
+                        log.debug("Failed to read response body from Gemini error: {}", ex.getMessage());
+                    }
+                    try {
+                        String payloadStr = objectMapper.writeValueAsString(payload);
+                        String payloadSnippet = payloadStr.length() > 1000 ? payloadStr.substring(0, 1000) + "..." : payloadStr;
+                        String respSnippet = respBody == null ? "" : (respBody.length() > 200 ? respBody.substring(0, 200) + "..." : respBody);
+                        log.error("Gemini API returned HTTP {} on attempt {}: {} -- responseSnippet={} -- payloadSnippet={}", statusCode, attempt, wcre.getMessage(), respSnippet, payloadSnippet);
+                    } catch (Exception logEx) {
+                        // Fall back to basic log if serialization failed
+                        log.error("Gemini API returned HTTP {} on attempt {}: {} -- failed to serialize payload/response for logging ({} )", statusCode, attempt, wcre.getMessage(), logEx.getMessage());
+                    }
                     
                     // Handle 403 Forbidden with devFallback
                     if (wcre.getStatusCode() == HttpStatus.FORBIDDEN) {
