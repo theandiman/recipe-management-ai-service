@@ -49,6 +49,11 @@ public class RecipeServiceGeminiErrorsTest {
         MockResponse resp = new MockResponse().setResponseCode(403).setBody("Forbidden");
         mockWebServer.enqueue(resp);
 
+        // Ensure devFallback is explicitly false for this test (set private field directly)
+        java.lang.reflect.Field df = RecipeService.class.getDeclaredField("devFallback");
+        df.setAccessible(true);
+        df.set(recipeService, false);
+
         String out = recipeService.generateRecipe("Make a test", java.util.List.of("egg"));
         // When 403 and devFallback=false we expect null result (no fallback)
         assertNull(out);
@@ -56,14 +61,17 @@ public class RecipeServiceGeminiErrorsTest {
 
     @Test
     public void testGenerateRecipe_403_devFallbackTrue_returnsMock() throws Exception {
-        // Set devFallback true via system property for the test
-        System.setProperty("gemini.dev.fallback", "true");
+        // Set devFallback true on the RecipeService instance for the test via reflection
+        java.lang.reflect.Field df = RecipeService.class.getDeclaredField("devFallback");
+        df.setAccessible(true);
+        df.set(recipeService, true);
         MockResponse resp = new MockResponse().setResponseCode(403).setBody("Forbidden");
         mockWebServer.enqueue(resp);
 
         String out = recipeService.generateRecipe("Make a test", java.util.List.of("egg"));
         assertNotNull(out);
-        System.clearProperty("gemini.dev.fallback");
+    // Reset the devFallback field to its default false so other tests are unaffected
+    df.set(recipeService, false);
     }
 
     @Test
