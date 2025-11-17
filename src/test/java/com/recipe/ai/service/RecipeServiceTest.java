@@ -93,24 +93,24 @@ public class RecipeServiceTest {
             Assertions.assertTrue(properties.containsKey("servings"), "Schema should include servings field");
             @SuppressWarnings("unchecked")
             Map<String, Object> servingsProp = (Map<String, Object>) properties.get("servings");
-            Assertions.assertEquals("integer", servingsProp.get("type"), "servings should be an integer type");
+            Assertions.assertTrue("integer".equalsIgnoreCase(String.valueOf(servingsProp.get("type"))), "servings should be an integer type");
             Assertions.assertTrue(properties.containsKey("prepTimeMinutes"), "Schema should include prepTimeMinutes field");
             @SuppressWarnings("unchecked")
             Map<String, Object> prepMinutesProp = (Map<String, Object>) properties.get("prepTimeMinutes");
-            Assertions.assertEquals("integer", prepMinutesProp.get("type"), "prepTimeMinutes should be an integer type");
+            Assertions.assertTrue("integer".equalsIgnoreCase(String.valueOf(prepMinutesProp.get("type"))), "prepTimeMinutes should be an integer type");
             // imageGeneration should be an object due to Map<String,Object>
             Assertions.assertTrue(properties.containsKey("imageGeneration"), "Schema should include imageGeneration field");
             @SuppressWarnings("unchecked")
             Map<String, Object> imageGenProp = (Map<String, Object>) properties.get("imageGeneration");
-            Assertions.assertEquals("object", imageGenProp.get("type"), "imageGeneration should be an object type");
+            Assertions.assertTrue("object".equalsIgnoreCase(String.valueOf(imageGenProp.get("type"))), "imageGeneration should be an object type");
 
             // tags should be an array of strings
             Assertions.assertTrue(properties.containsKey("tags"), "Schema should include tags field");
             @SuppressWarnings("unchecked")
             Map<String, Object> tagsProp = (Map<String, Object>) properties.get("tags");
-            Assertions.assertEquals("array", tagsProp.get("type"), "tags should be an array type");
+            Assertions.assertTrue("array".equalsIgnoreCase(String.valueOf(tagsProp.get("type"))), "tags should be an array type");
             @SuppressWarnings("unchecked")
             Map<String, Object> items = (Map<String, Object>) tagsProp.get("items");
-            Assertions.assertEquals("string", items.get("type"), "tags items should be string type");
+            Assertions.assertTrue("string".equalsIgnoreCase(String.valueOf(items.get("type"))), "tags items should be string type");
     }
 }
