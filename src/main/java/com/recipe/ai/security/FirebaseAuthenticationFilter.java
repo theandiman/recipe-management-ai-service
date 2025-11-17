@@ -1,8 +1,6 @@
 package com.recipe.ai.security;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
-import com.google.firebase.auth.FirebaseToken;
+// FirebaseToken import removed; will use VerifiedUser instead
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +34,12 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(FirebaseAuthenticationFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
 
+    private final FirebaseVerifier firebaseVerifier;
+
+    public FirebaseAuthenticationFilter(FirebaseVerifier firebaseVerifier) {
+        this.firebaseVerifier = firebaseVerifier;
+    }
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -52,24 +56,30 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
             try {
                 // Verify the Firebase ID token
-                FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-                String uid = decodedToken.getUid();
-                String email = decodedToken.getEmail();
+                var verifiedUser = firebaseVerifier.verifyIdToken(idToken);
+                if (verifiedUser == null) {
+                    log.warn("Firebase verifier returned null for token - not authenticated");
+                } else {
+                    String uid = verifiedUser.uid();
+                    String email = verifiedUser.email();
 
-                log.info("Successfully authenticated user: uid={}, email={}", uid, email);
+                    log.info("Successfully authenticated user: uid={}, email={}", uid, email);
 
-                // Create authentication object with user details
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                uid,
-                                null,
-                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-                        );
+                    // Create authentication object with user details
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    uid,
+                                    null,
+                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                            );
 
-                // Set authentication in security context
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    // Set authentication in security context
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
 
-            } catch (FirebaseAuthException e) {
+        // (Handled above after verifying user)
+
+            } catch (Exception e) {
                 log.error("Failed to verify Firebase token for {} {}: {}", 
                          request.getMethod(), request.getRequestURI(), e.getMessage(), e);
                 // Don't set authentication - request will be rejected by security config
@@ -80,4 +90,9 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+
+    /**
+     * Wrapper for FirebaseAuth.getInstance() to allow overriding in tests.
+     */
+    // getFirebaseAuth removed — replaced by FirebaseVerifier injection
 }
