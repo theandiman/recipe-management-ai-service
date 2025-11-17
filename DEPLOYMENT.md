@@ -297,6 +297,20 @@ curl -X POST http://localhost:8080/api/recipes/generate \
   }'
 ```
 
+### Local Docker Build
+
+If you want to build a Docker image locally with the repository Dockerfile, the Dockerfile expects a prebuilt JAR artifact at `target/*.jar` (CI builds this artifact before running the Docker build). Run the Maven package goal first to create the jar, then build the Docker image:
+
+```bash
+# Build the jar (skip integration tests)
+mvn -DskipITs -DskipTests package
+
+# Then build the Docker image (if Docker is installed locally)
+docker build -t recipe-ai-service:local .
+```
+
+If you'd prefer a single Dockerfile that builds the jar during image build (a builder stage), see the note below about using a multi-stage builder image; however, this will increase your Docker build time and result in re-downloading dependencies.
+
 ### 2. Cloud Run Testing
 
 After deployment, get the service URL:
