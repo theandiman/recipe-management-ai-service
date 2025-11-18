@@ -470,7 +470,7 @@ public class RecipeService {
                             // imageGeneration metadata into the Gemini response schema and validation.
                         } catch (Exception e) {
                             // if parsing fails, just return the original recipe JSON
-                            log.debug("Failed to parse or inject imageUrl into recipe JSON: {}", e.getMessage());
+                            log.debug("Failed to parse or process recipe JSON: {}", e.getMessage());
                         }
                         return recipeJson;
                     }
