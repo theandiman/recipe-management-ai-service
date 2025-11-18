@@ -39,6 +39,58 @@ public class RecipeService {
 
     private static final Logger log = LoggerFactory.getLogger(RecipeService.class);
 
+    // Constants for repeated string literals to fix SonarQube duplication issues
+    private static final String DEFAULT_API_KEY_PLACEHOLDER = "YOUR_SECURE_API_KEY_HERE";
+    private static final String GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY";
+    private static final String IMAGE_GENERATION_DISABLED = "image_generation_disabled";
+    private static final String APPLICATION_JSON = "application/json";
+    private static final String GENERATE_IMAGE_PREFIX = "Generate image for: ";
+    private static final String RESPONSE_MODALITIES = "responseModalities";
+    private static final String IMAGE_MODALITY = "Image";
+    private static final String API_KEY_HEADER = "x-goog-api-key";
+    private static final String INLINE_DATA = "inlineData";
+    private static final String INLINE_DATA_ALT = "inline_data";
+    private static final String MIME_TYPE = "mimeType";
+    private static final String MIME_TYPE_ALT = "mime_type";
+    private static final String DATA_FIELD = "data";
+    private static final String IMAGE_URL = "imageUrl";
+    private static final String DATA_URL_PREFIX = "data:";
+    private static final String DEFAULT_MIME_TYPE = "image/png";
+    private static final String BASE64_PREFIX = "base64,";
+    private static final String MODELS_PATH = "models/";
+    private static final String DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
+    private static final String CONTENT_TYPE_HEADER = "Content-Type";
+    private static final String CONTENTS = "contents";
+    private static final String GENERATION_CONFIG = "generationConfig";
+    private static final String CANDIDATES = "candidates";
+    private static final String CONTENT = "content";
+    private static final String PARTS = "parts";
+    private static final String TEXT = "text";
+    private static final String ESTIMATED_TIME_MINUTES = "estimatedTimeMinutes";
+    private static final String PREP_TIME = "prepTime";
+    private static final String COOK_TIME = "cookTime";
+    private static final String ESTIMATED_TIME = "estimatedTime";
+    private static final String IMAGE_GENERATION = "imageGeneration";
+    private static final String STATUS = "status";
+    private static final String SOURCE = "source";
+    private static final String ERROR_MESSAGE = "errorMessage";
+    private static final String SUCCESS = "success";
+    private static final String FAILED = "failed";
+    private static final String SKIPPED = "skipped";
+    private static final String PLACEHOLDER = "placeholder";
+    private static final String MOCK_PLACEHOLDER = "mock_placeholder";
+    private static final String DEV_FALLBACK = "devFallback";
+    private static final String NOT_ATTEMPTED = "not_attempted";
+    private static final String ATTEMPTING = "attempting";
+    private static final String RECIPE_NAME = "recipeName";
+    private static final String DESCRIPTION = "description";
+    private static final String INGREDIENTS = "ingredients";
+    private static final String INSTRUCTIONS = "instructions";
+    private static final String SERVINGS = "servings";
+    private static final String PREP_TIME_MINUTES = "prepTimeMinutes";
+    private static final String COOK_TIME_MINUTES = "cookTimeMinutes";
+    private static final String TOTAL_TIME_MINUTES = "totalTimeMinutes";
+
     // In a real Spring Boot app, this would be loaded from application.properties/yml
     @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent}")
     private String geminiApiUrl;
@@ -93,7 +145,7 @@ public class RecipeService {
         if (maxTotalMinutes == null) return violations;
 
         // 1) Prefer an explicit numeric field returned by the model
-        Object etm = recipeObj.get("estimatedTimeMinutes");
+        Object etm = recipeObj.get(ESTIMATED_TIME_MINUTES);
         if (etm instanceof Number) {
             int est = ((Number) etm).intValue();
             if (est > maxTotalMinutes) {
@@ -104,7 +156,7 @@ public class RecipeService {
         }
 
         // 2) Fallback: try to parse prepTime string like '45 minutes' or '1 hour 30 minutes'
-        Object pt = recipeObj.get("prepTime");
+        Object pt = recipeObj.get(PREP_TIME);
         if (pt instanceof String) {
             Integer parsed = parseMinutesFromString((String) pt);
             if (parsed != null && parsed > maxTotalMinutes) {
@@ -180,7 +232,7 @@ public class RecipeService {
                         if (parts.length == 2) {
                             String k = parts[0].trim();
                             String v = parts[1].trim();
-                            if ("GEMINI_API_KEY".equals(k) && v.length() > 0) {
+                            if (GEMINI_API_KEY_ENV_VAR.equals(k) && v.length() > 0) {
                                 return v;
                             }
                         }
@@ -188,7 +240,7 @@ public class RecipeService {
                 }
             } catch (Exception e) {
                 // Log reading errors for dev visibility but continue to fall back to configured property
-                log.debug("Failed to read .env for GEMINI_API_KEY: {}", e == null ? "null" : e.getMessage(), e);
+                log.debug("Failed to read .env for " + GEMINI_API_KEY_ENV_VAR + ": {}", e == null ? "null" : e.getMessage(), e);
             }
             return geminiApiKey;
         }
@@ -264,21 +316,21 @@ public class RecipeService {
         String effectiveApiKey = resolveEffectiveApiKey();
     log.info("gemini.image.enabled={} (property), effectiveApiKeyPresent={}", geminiImageEnabled, effectiveApiKey != null && !effectiveApiKey.isBlank());
 
-        if (effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains("YOUR_SECURE_API_KEY_HERE")) {
-            log.warn("No Gemini API key configured (system prop GEMINI_API_KEY, env GEMINI_API_KEY, .env, or gemini.api.key). Calls will fail until an API key is set.");
+        if (effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains(DEFAULT_API_KEY_PLACEHOLDER)) {
+            log.warn("No Gemini API key configured (system prop " + GEMINI_API_KEY_ENV_VAR + ", env " + GEMINI_API_KEY_ENV_VAR + ", .env, or gemini.api.key). Calls will fail until an API key is set.");
         }
 
         // Conservative guard: if there's no effective API key and devFallback is false, return a local mock
         // instead of attempting outbound calls (avoids repeated 403s during local development).
-        if ((effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains("YOUR_SECURE_API_KEY_HERE")) && !devFallback) {
-            log.info("No effective Gemini API key found and devFallback disabled — returning development mock to avoid outbound calls.");
+        if ((effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains(DEFAULT_API_KEY_PLACEHOLDER)) && !devFallback) {
+            log.info("No effective Gemini API key found and " + DEV_FALLBACK + " disabled — returning development mock to avoid outbound calls.");
             return createMockRecipe(pantryItems);
         }
 
         // If developer fallback is explicitly enabled and no API key is present, return the local mock
         // immediately to avoid attempting outbound calls during local development.
-        if (devFallback && (effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains("YOUR_SECURE_API_KEY_HERE"))) {
-            log.info("devFallback enabled and no API key present — returning development mock recipe.");
+        if (devFallback && (effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains(DEFAULT_API_KEY_PLACEHOLDER))) {
+            log.info(DEV_FALLBACK + " enabled and no API key present — returning development mock recipe.");
             return createMockRecipe(pantryItems);
         }
 
@@ -289,7 +341,7 @@ public class RecipeService {
             ),
             "systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))),
             "generationConfig", Map.of(
-                "responseMimeType", "application/json",
+                "responseMimeType", APPLICATION_JSON,
                 "responseSchema", RECIPE_SCHEMA
             )
         );
@@ -415,20 +467,20 @@ public class RecipeService {
                             // Prefer an existing numeric field; otherwise derive from estimatedTime string,
                             // or sum prepTime + cookTime (when cookTime is present).
                             try {
-                                Object existing = obj.get("estimatedTimeMinutes");
+                                Object existing = obj.get(ESTIMATED_TIME_MINUTES);
                                 Integer computed = null;
                                 if (existing instanceof Number) {
                                     computed = ((Number) existing).intValue();
                                 } else {
                                     // Try an alternative explicit string field
                                     // Prefer explicit estimatedTime string if present
-                                    Integer parsedEst = parseMinutesFromField(obj, "estimatedTime");
+                                    Integer parsedEst = parseMinutesFromField(obj, ESTIMATED_TIME);
                                     if (parsedEst != null) {
                                         computed = parsedEst;
                                     } else {
                                         // Parse prepTime and cookTime and only compute a total when cookTime exists
-                                        Integer p = parseMinutesFromField(obj, "prepTime");
-                                        Integer c = parseMinutesFromField(obj, "cookTime");
+                                        Integer p = parseMinutesFromField(obj, PREP_TIME);
+                                        Integer c = parseMinutesFromField(obj, COOK_TIME);
                                         if (c != null && c > 0) {
                                             computed = (p == null ? 0 : p) + c;
                                         }
@@ -440,9 +492,9 @@ public class RecipeService {
                                     // or presence of cookTime so that a total is meaningful.
                                 }
 
-                                if (computed != null && !(obj.get("estimatedTimeMinutes") instanceof Number)) {
+                                if (computed != null && !(obj.get(ESTIMATED_TIME_MINUTES) instanceof Number)) {
                                     // Only inject if not already present as a numeric value
-                                    obj.put("estimatedTimeMinutes", computed);
+                                    obj.put(ESTIMATED_TIME_MINUTES, computed);
                                     try {
                                         recipeJson = objectMapper.writeValueAsString(obj);
                                     } catch (Exception ex) {
@@ -470,14 +522,14 @@ public class RecipeService {
                                 String title = obj.getOrDefault("recipeName", "Recipe").toString();
                                 // Prepare imageGeneration metadata to help frontend show status/errors
                                 Map<String, Object> imageGeneration = new java.util.LinkedHashMap<>();
-                                imageGeneration.put("status", "not_attempted");
-                                imageGeneration.put("source", "");
-                                imageGeneration.put("errorMessage", "");
+                                imageGeneration.put(STATUS, NOT_ATTEMPTED);
+                                imageGeneration.put(SOURCE, "");
+                                imageGeneration.put(ERROR_MESSAGE, "");
 
                                 // Try to generate an image when enabled (use same Gemini API URL & key)
                                 String generatedImage = null;
                                 if (geminiImageEnabled) {
-                                    imageGeneration.put("status", "attempting");
+                                    imageGeneration.put(STATUS, ATTEMPTING);
                                     try {
                                         // Convert recipe Map to shared Recipe for richer image prompts
                                         Recipe recipeForImage = objectMapper.convertValue(obj, Recipe.class);
@@ -487,43 +539,43 @@ public class RecipeService {
                                         // Use generateImageFromRequest for full recipe context
                                         Map<String, Object> imageResult = generateImageFromRequest(imageRequest);
                                         
-                                        if ("success".equals(imageResult.get("status"))) {
-                                            generatedImage = (String) imageResult.get("imageUrl");
-                                            imageGeneration.put("status", "success");
-                                            imageGeneration.put("source", imageResult.getOrDefault("source", ""));
+                                        if (SUCCESS.equals(imageResult.get(STATUS))) {
+                                            generatedImage = (String) imageResult.get(IMAGE_URL);
+                                            imageGeneration.put(STATUS, SUCCESS);
+                                            imageGeneration.put(SOURCE, imageResult.getOrDefault(SOURCE, ""));
                                         } else {
-                                            imageGeneration.put("status", "failed");
-                                            imageGeneration.put("errorMessage", imageResult.getOrDefault("errorMessage", "no_image_returned"));
+                                            imageGeneration.put(STATUS, FAILED);
+                                            imageGeneration.put(ERROR_MESSAGE, imageResult.getOrDefault(ERROR_MESSAGE, "no_image_returned"));
                                         }
                                     } catch (Exception e) {
                                         // record failure status and message for frontend visibility
                                         log.debug("Image generation failed for recipe='{}': {}", title, e.getMessage());
-                                        imageGeneration.put("status", "failed");
-                                        imageGeneration.put("errorMessage", e.getMessage() == null ? "unknown_error" : e.getMessage());
+                                        imageGeneration.put(STATUS, FAILED);
+                                        imageGeneration.put(ERROR_MESSAGE, e.getMessage() == null ? "unknown_error" : e.getMessage());
                                     }
                                 } else {
-                                    imageGeneration.put("status", "skipped");
-                                    imageGeneration.put("errorMessage", "image_generation_disabled");
+                                    imageGeneration.put(STATUS, SKIPPED);
+                                    imageGeneration.put(ERROR_MESSAGE, IMAGE_GENERATION_DISABLED);
                                 }
 
                                 if (generatedImage != null) {
-                                    obj.put("imageUrl", generatedImage);
+                                    obj.put(IMAGE_URL, generatedImage);
                                 } else {
                                     // If images are disabled, do not inject the placeholder — only set metadata
                                     if (geminiImageEnabled) {
-                                        obj.put("imageUrl", generatePlaceholderDataUrl(title));
-                                        if (!imageGeneration.containsKey("status") || "failed".equals(imageGeneration.get("status"))) {
-                                            imageGeneration.put("source", "placeholder");
+                                        obj.put(IMAGE_URL, generatePlaceholderDataUrl(title));
+                                        if (!imageGeneration.containsKey(STATUS) || FAILED.equals(imageGeneration.get(STATUS))) {
+                                            imageGeneration.put(SOURCE, PLACEHOLDER);
                                         }
                                     } else {
                                         // indicate skipped and leave out imageUrl so frontend can detect absence
-                                        imageGeneration.put("status", "skipped");
-                                        imageGeneration.put("source", "");
-                                        imageGeneration.put("errorMessage", "image_generation_disabled");
+                                        imageGeneration.put(STATUS, SKIPPED);
+                                        imageGeneration.put(SOURCE, "");
+                                        imageGeneration.put(ERROR_MESSAGE, IMAGE_GENERATION_DISABLED);
                                     }
                                 }
 
-                                obj.put("imageGeneration", imageGeneration);
+                                obj.put(IMAGE_GENERATION, imageGeneration);
 
                                 return objectMapper.writeValueAsString(obj);
                             }
@@ -594,33 +646,33 @@ public class RecipeService {
 
     private String createMockRecipe(List<String> pantryItems) {
         Map<String, Object> base = new java.util.LinkedHashMap<>();
-        base.put("recipeName", "Simple Toast");
-        base.put("description", "A quick and tasty toast using available pantry items.");
-        base.put("ingredients", pantryItems == null || pantryItems.isEmpty()
+        base.put(RECIPE_NAME, "Simple Toast");
+        base.put(DESCRIPTION, "A quick and tasty toast using available pantry items.");
+        base.put(INGREDIENTS, pantryItems == null || pantryItems.isEmpty()
                 ? List.of("bread", "butter")
                 : pantryItems.stream().map(i -> "1 x " + i).toList());
-        base.put("instructions", List.of("Toast the bread.", "Spread butter on the toast.", "Serve immediately."));
-        base.put("prepTime", "5 minutes");
-        base.put("prepTimeMinutes", 5);
-        base.put("cookTimeMinutes", 0);
-        base.put("totalTimeMinutes", 5);
-        base.put("servings", 1);
+        base.put(INSTRUCTIONS, List.of("Toast the bread.", "Spread butter on the toast.", "Serve immediately."));
+        base.put(PREP_TIME, "5 minutes");
+        base.put(PREP_TIME_MINUTES, 5);
+        base.put(COOK_TIME_MINUTES, 0);
+        base.put(TOTAL_TIME_MINUTES, 5);
+        base.put(SERVINGS, 1);
         // Only add a placeholder image if image generation is enabled or we explicitly want a placeholder
         if (geminiImageEnabled) {
-            base.put("imageUrl", generatePlaceholderDataUrl("Simple Toast"));
+            base.put(IMAGE_URL, generatePlaceholderDataUrl("Simple Toast"));
         }
         // Add imageGeneration metadata so the frontend can see this is a mocked response and whether images are enabled
         Map<String, Object> imageGeneration = new java.util.LinkedHashMap<>();
         if (geminiImageEnabled) {
-            imageGeneration.put("status", "mock_placeholder");
-            imageGeneration.put("source", "placeholder");
-            imageGeneration.put("errorMessage", "");
+            imageGeneration.put(STATUS, MOCK_PLACEHOLDER);
+            imageGeneration.put(SOURCE, PLACEHOLDER);
+            imageGeneration.put(ERROR_MESSAGE, "");
         } else {
-            imageGeneration.put("status", "skipped");
-            imageGeneration.put("source", "");
-            imageGeneration.put("errorMessage", "image_generation_disabled");
+            imageGeneration.put(STATUS, SKIPPED);
+            imageGeneration.put(SOURCE, "");
+            imageGeneration.put(ERROR_MESSAGE, IMAGE_GENERATION_DISABLED);
         }
-        base.put("imageGeneration", imageGeneration);
+        base.put(IMAGE_GENERATION, imageGeneration);
         Map<String, Object> mock = base;
         try {
             return objectMapper.writeValueAsString(mock);
@@ -875,23 +927,21 @@ public class RecipeService {
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(32 * 1024 * 1024))
             .build();
 
-        Map<String, Object> generationConfig = Map.of("responseModalities", List.of("Image"));
-        Map<String, Object> payload = Map.of("contents", List.of(Map.of("parts", List.of(Map.of("text", "Generate image for: " + prompt)))) , "generationConfig", generationConfig);
+        Map<String, Object> generationConfig = Map.of(RESPONSE_MODALITIES, List.of(IMAGE_MODALITY));
+        Map<String, Object> payload = Map.of("contents", List.of(Map.of("parts", List.of(Map.of("text", GENERATE_IMAGE_PREFIX + prompt)))) , "generationConfig", generationConfig);
 
         final int MAX_WEBCLIENT_ATTEMPTS = 3;
         final long WEBCLIENT_BACKOFF_MS = 500L;
         String body = null;
 
         for (int attempt = 1; attempt <= MAX_WEBCLIENT_ATTEMPTS; attempt++) {
-                WebClient client = webClientBuilder
-                    .exchangeStrategies(strategies)
-                    .clientConnector(new ReactorClientHttpConnector(HttpClient.create().wiretap(true)))
-                    .baseUrl(imageEndpoint)
-                    .defaultHeader("x-goog-api-key", effectiveApiKey)
-                    .defaultHeader("Accept", "application/json")
-                    .build();
-
-            try {
+            WebClient client = webClientBuilder
+                .exchangeStrategies(strategies)
+                .clientConnector(new ReactorClientHttpConnector(HttpClient.create().wiretap(true)))
+                .baseUrl(imageEndpoint)
+                .defaultHeader(API_KEY_HEADER, effectiveApiKey)
+                .defaultHeader("Accept", "application/json")
+                .build();            try {
                 final int currentAttempt = attempt;
                 body = client.post()
                     .contentType(MediaType.APPLICATION_JSON)
@@ -947,8 +997,8 @@ public class RecipeService {
                 String altPayload = objectMapper.writeValueAsString(payload);
                 java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
                     .uri(new URI(imageEndpoint))
-                    .header("Content-Type", "application/json")
-                    .header("x-goog-api-key", effectiveApiKey)
+                    .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
+                    .header(API_KEY_HEADER, effectiveApiKey)
                     .POST(java.net.http.HttpRequest.BodyPublishers.ofString(altPayload))
                     .build();
                 java.net.http.HttpResponse<String> altResp = jclient.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
@@ -1074,15 +1124,15 @@ public class RecipeService {
                 return null;
             }
 
-            Map<String, Object> generationConfig = Map.of("responseModalities", List.of("Image"));
-            Map<String, Object> payloadMap = Map.of("contents", List.of(Map.of("parts", List.of(Map.of("text", "Generate image for: " + prompt)))) , "generationConfig", generationConfig);
+            Map<String, Object> generationConfig = Map.of(RESPONSE_MODALITIES, List.of(IMAGE_MODALITY));
+            Map<String, Object> payloadMap = Map.of(CONTENTS, List.of(Map.of(PARTS, List.of(Map.of(TEXT, GENERATE_IMAGE_PREFIX + prompt)))) , GENERATION_CONFIG, generationConfig);
             String payload = objectMapper.writeValueAsString(payloadMap);
 
         java.net.http.HttpClient jclient = java.net.http.HttpClient.newHttpClient();
         java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
             .uri(new URI(geminiImageUrl))
-            .header("Content-Type", "application/json")
-            .header("x-goog-api-key", effectiveApiKey)
+            .header(CONTENT_TYPE_HEADER, APPLICATION_JSON)
+            .header(API_KEY_HEADER, effectiveApiKey)
             .POST(java.net.http.HttpRequest.BodyPublishers.ofString(payload))
             .build();
 
