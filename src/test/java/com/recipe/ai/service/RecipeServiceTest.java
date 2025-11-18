@@ -98,11 +98,8 @@ public class RecipeServiceTest {
             @SuppressWarnings("unchecked")
             Map<String, Object> prepMinutesProp = (Map<String, Object>) properties.get("prepTimeMinutes");
             Assertions.assertTrue("integer".equalsIgnoreCase(String.valueOf(prepMinutesProp.get("type"))), "prepTimeMinutes should be an integer type");
-            // imageGeneration should be an object due to Map<String,Object>
-            Assertions.assertTrue(properties.containsKey("imageGeneration"), "Schema should include imageGeneration field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> imageGenProp = (Map<String, Object>) properties.get("imageGeneration");
-            Assertions.assertTrue("object".equalsIgnoreCase(String.valueOf(imageGenProp.get("type"))), "imageGeneration should be an object type");
+            // imageGeneration should NOT be included in the response schema — images are generated separately
+            Assertions.assertFalse(properties.containsKey("imageGeneration"), "Schema should NOT include imageGeneration field (images are generated via separate endpoint)");
 
             // tags should be an array of strings
             Assertions.assertTrue(properties.containsKey("tags"), "Schema should include tags field");

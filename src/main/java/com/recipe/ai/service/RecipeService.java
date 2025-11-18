@@ -465,67 +465,9 @@ public class RecipeService {
                                 err.put("details", Map.of("violations", timeViolations));
                                 return objectMapper.writeValueAsString(err);
                             }
-                            if (!obj.containsKey("imageUrl")) {
-                                String title = obj.getOrDefault("recipeName", "Recipe").toString();
-                                // Prepare imageGeneration metadata to help frontend show status/errors
-                                Map<String, Object> imageGeneration = new java.util.LinkedHashMap<>();
-                                imageGeneration.put("status", "not_attempted");
-                                imageGeneration.put("source", "");
-                                imageGeneration.put("errorMessage", "");
-
-                                // Try to generate an image when enabled (use same Gemini API URL & key)
-                                String generatedImage = null;
-                                if (geminiImageEnabled) {
-                                    imageGeneration.put("status", "attempting");
-                                    try {
-                                        // Convert recipe Map to shared Recipe for richer image prompts
-                                        Recipe recipeForImage = objectMapper.convertValue(obj, Recipe.class);
-                                        ImageGenerationRequest imageRequest = new ImageGenerationRequest();
-                                        imageRequest.setRecipe(recipeForImage);
-                                        
-                                        // Use generateImageFromRequest for full recipe context
-                                        Map<String, Object> imageResult = generateImageFromRequest(imageRequest);
-                                        
-                                        if ("success".equals(imageResult.get("status"))) {
-                                            generatedImage = (String) imageResult.get("imageUrl");
-                                            imageGeneration.put("status", "success");
-                                            imageGeneration.put("source", imageResult.getOrDefault("source", ""));
-                                        } else {
-                                            imageGeneration.put("status", "failed");
-                                            imageGeneration.put("errorMessage", imageResult.getOrDefault("errorMessage", "no_image_returned"));
-                                        }
-                                    } catch (Exception e) {
-                                        // record failure status and message for frontend visibility
-                                        log.debug("Image generation failed for recipe='{}': {}", title, e.getMessage());
-                                        imageGeneration.put("status", "failed");
-                                        imageGeneration.put("errorMessage", e.getMessage() == null ? "unknown_error" : e.getMessage());
-                                    }
-                                } else {
-                                    imageGeneration.put("status", "skipped");
-                                    imageGeneration.put("errorMessage", "image_generation_disabled");
-                                }
-
-                                if (generatedImage != null) {
-                                    obj.put("imageUrl", generatedImage);
-                                } else {
-                                    // If images are disabled, do not inject the placeholder — only set metadata
-                                    if (geminiImageEnabled) {
-                                        obj.put("imageUrl", generatePlaceholderDataUrl(title));
-                                        if (!imageGeneration.containsKey("status") || "failed".equals(imageGeneration.get("status"))) {
-                                            imageGeneration.put("source", "placeholder");
-                                        }
-                                    } else {
-                                        // indicate skipped and leave out imageUrl so frontend can detect absence
-                                        imageGeneration.put("status", "skipped");
-                                        imageGeneration.put("source", "");
-                                        imageGeneration.put("errorMessage", "image_generation_disabled");
-                                    }
-                                }
-
-                                obj.put("imageGeneration", imageGeneration);
-
-                                return objectMapper.writeValueAsString(obj);
-                            }
+                            // Image generation is handled separately via the dedicated image endpoint. Don't
+                            // attempt to generate images inline during recipe generation to avoid binding
+                            // imageGeneration metadata into the Gemini response schema and validation.
                         } catch (Exception e) {
                             // if parsing fails, just return the original recipe JSON
                             log.debug("Failed to parse or inject imageUrl into recipe JSON: {}", e.getMessage());
