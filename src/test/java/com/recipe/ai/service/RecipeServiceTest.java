@@ -89,7 +89,7 @@ public class RecipeServiceTest {
                 "perServing should include " + nutrient + " field");
         }
 
-            // Ensure servings, prepTimeMinutes, and imageGeneration are present and typed correctly (lowercase types)
+            // Ensure servings and prepTimeMinutes are present and typed correctly (lowercase types)
             Assertions.assertTrue(properties.containsKey("servings"), "Schema should include servings field");
             @SuppressWarnings("unchecked")
             Map<String, Object> servingsProp = (Map<String, Object>) properties.get("servings");
