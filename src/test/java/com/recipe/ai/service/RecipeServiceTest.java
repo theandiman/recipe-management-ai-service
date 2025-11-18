@@ -90,19 +90,16 @@ public class RecipeServiceTest {
         }
 
             // Ensure servings, prepTimeMinutes, and imageGeneration are present and typed correctly (lowercase types)
-            Assertions.assertTrue(properties.containsKey("servings"), "Schema should include servings field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> servingsProp = (Map<String, Object>) properties.get("servings");
-            Assertions.assertTrue("integer".equalsIgnoreCase(String.valueOf(servingsProp.get("type"))), "servings should be an integer type");
-            Assertions.assertTrue(properties.containsKey("prepTimeMinutes"), "Schema should include prepTimeMinutes field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> prepMinutesProp = (Map<String, Object>) properties.get("prepTimeMinutes");
-            Assertions.assertTrue("integer".equalsIgnoreCase(String.valueOf(prepMinutesProp.get("type"))), "prepTimeMinutes should be an integer type");
-            // imageGeneration should be an object due to Map<String,Object>
-            Assertions.assertTrue(properties.containsKey("imageGeneration"), "Schema should include imageGeneration field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> imageGenProp = (Map<String, Object>) properties.get("imageGeneration");
-            Assertions.assertTrue("object".equalsIgnoreCase(String.valueOf(imageGenProp.get("type"))), "imageGeneration should be an object type");
+            Map.of(
+                "servings", "integer",
+                "prepTimeMinutes", "integer",
+                "imageGeneration", "object"
+            ).forEach((key, expectedType) -> {
+                Assertions.assertTrue(properties.containsKey(key), "Schema should include " + key + " field");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> prop = (Map<String, Object>) properties.get(key);
+                Assertions.assertTrue(expectedType.equalsIgnoreCase(String.valueOf(prop.get("type"))), key + " should be of type " + expectedType);
+            });
 
             // tags should be an array of strings
             Assertions.assertTrue(properties.containsKey("tags"), "Schema should include tags field");
