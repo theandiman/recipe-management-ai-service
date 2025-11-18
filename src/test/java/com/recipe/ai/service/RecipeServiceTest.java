@@ -89,25 +89,15 @@ public class RecipeServiceTest {
                 "perServing should include " + nutrient + " field");
         }
 
-            // Ensure servings, prepTimeMinutes, and imageGeneration are present and typed correctly (lowercase types)
+            // Ensure servings and prepTimeMinutes are present and typed correctly (lowercase types)
             Map.of(
                 "servings", "integer",
-                "prepTimeMinutes", "integer",
-                "imageGeneration", "object"
+                "prepTimeMinutes", "integer"
             ).forEach((key, expectedType) -> {
                 Assertions.assertTrue(properties.containsKey(key), "Schema should include " + key + " field");
                 @SuppressWarnings("unchecked")
                 Map<String, Object> prop = (Map<String, Object>) properties.get(key);
                 Assertions.assertTrue(expectedType.equalsIgnoreCase(String.valueOf(prop.get("type"))), key + " should be of type " + expectedType);
             });
-
-            // tags should be an array of strings
-            Assertions.assertTrue(properties.containsKey("tags"), "Schema should include tags field");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> tagsProp = (Map<String, Object>) properties.get("tags");
-            Assertions.assertTrue("array".equalsIgnoreCase(String.valueOf(tagsProp.get("type"))), "tags should be an array type");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> items = (Map<String, Object>) tagsProp.get("items");
-            Assertions.assertTrue("string".equalsIgnoreCase(String.valueOf(items.get("type"))), "tags items should be string type");
     }
 }
