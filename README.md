@@ -17,6 +17,7 @@ This microservice provides REST API endpoints for generating recipes and recipe 
 - **CORS Support**: Configured for local development and Firebase hosting
 - **Health Checks**: Actuator endpoints for Cloud Run health monitoring
 - **Nutritional Information**: Accurate nutritional data based on USDA standards
+- **Observability**: Integrated with Honeycomb for distributed tracing, metrics, and logging
 
 ## Architecture
 
@@ -129,11 +130,55 @@ Production environment variables:
 - `SPRING_PROFILES_ACTIVE` - Profile (production, local)
 - `firebase.project.id` - Firebase project ID (recipe-mgmt-dev)
 - `auth.enabled` - Enable authentication (true)
+- `HONEYCOMB_API_KEY` - Honeycomb API key for observability
+- `SERVICE_VERSION` - Service version for observability tagging
 
-## Health Checks
+## Observability
 
-- **Endpoint**: `/actuator/health`
-- **Usage**: Used by Cloud Run for health monitoring
+The service integrates with [Honeycomb](https://www.honeycomb.io/) for centralized observability, providing distributed tracing, metrics, and structured logging.
+
+### Features
+
+- ✅ **Distributed Tracing** - Track requests across service boundaries
+- ✅ **Performance Monitoring** - Response times, throughput, and latency
+- ✅ **Error Tracking** - Detailed error information and stack traces
+- ✅ **Custom Metrics** - Application-specific metrics and KPIs
+- ✅ **Structured Logging** - Consistent log format with correlation IDs
+
+### Local Development with Observability
+
+1. **Set Honeycomb API Key**
+   ```bash
+   export HONEYCOMB_API_KEY=your_api_key_here
+   ```
+
+2. **Start with observability**
+   ```bash
+   ./start-with-observability.sh
+   ```
+
+3. **View your data**
+   - **Honeycomb UI**: https://ui.honeycomb.io/
+   - **Service URL**: http://localhost:8080
+
+### Production Configuration
+
+The service is automatically configured with observability when deployed via Terraform from the [recipe-management-infrastructure](https://github.com/theandiman/recipe-management-infrastructure) repository.
+
+Environment variables set automatically:
+- `OTEL_SERVICE_NAME=recipe-ai-service`
+- `OTEL_TRACES_EXPORTER=otlp`
+- `OTEL_METRICS_EXPORTER=otlp`
+- `OTEL_LOGS_EXPORTER=otlp`
+- `OTEL_EXPORTER_OTLP_ENDPOINT=https://api.honeycomb.io:443`
+- `OTEL_EXPORTER_OTLP_HEADERS=api-key=<your-key>`
+- `OTEL_EXPORTER_OTLP_PROTOCOL=grpc`
+
+### Troubleshooting
+
+- **No Data in Honeycomb**: Check that `HONEYCOMB_API_KEY` is set correctly
+- **Connection Errors**: Verify network connectivity to `api.honeycomb.io:443`
+- **Missing Traces**: Ensure the OpenTelemetry Java agent is loaded (check startup logs)
 
 ## Related Repositories
 
