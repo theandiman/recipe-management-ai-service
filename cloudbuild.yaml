@@ -1,4 +1,35 @@
 steps:
+  # Determine version based on branch
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'determine-version'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Determining version for branch: $BRANCH_NAME"
+        
+        if [ "$BRANCH_NAME" = "main" ]; then
+          echo "Main branch detected - using release version"
+          # For main branch, get the latest tag and bump patch version
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Remove 'v' prefix if present
+          LATEST_TAG=${LATEST_TAG#v}
+          echo "Latest tag: $LATEST_TAG"
+          
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+          NEW_PATCH=$((PATCH + 1))
+          VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "New version: $VERSION"
+        else
+          echo "Feature/PR branch detected - using SNAPSHOT version"
+          # For feature branches, use 1.0.0-SNAPSHOT
+          VERSION="1.0.0-SNAPSHOT"
+        fi
+        
+        echo "Building with version: $VERSION"
+        echo $VERSION > /workspace/version.txt
+
   # Configure Maven settings to authenticate to Artifact Registry via an access token
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'configure-maven-settings'
@@ -57,8 +88,9 @@ steps:
     args:
       - '-c'
       - |
-        echo "Building application package..."
-        mvn -s /workspace/.m2/settings.xml package -DskipTests
+        VERSION=$(cat /workspace/version.txt)
+        echo "Building application package with version: $VERSION"
+        mvn -s /workspace/.m2/settings.xml package -DskipTests -Drevision=$VERSION
 
   # Build Docker image - ONLY on main branch
   - name: 'gcr.io/cloud-builders/docker'
@@ -108,6 +140,57 @@ steps:
           --region ${_REGION}
         
         echo "Deployment complete ✓"
+
+  # Tag the release after successful deployment - ONLY on main branch
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'tag-release'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only tag on main branch after successful deployment
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "PR build detected (branch: $BRANCH_NAME), skipping tagging"
+          exit 0
+        fi
+        
+        VERSION=$(cat /workspace/version.txt)
+        TAG_NAME="v$VERSION"
+        
+        echo "Creating git tag: $TAG_NAME"
+        git config --global user.email "ci@recipe-management.com"
+        git config --global user.name "CI Bot"
+        
+        # Create and push the tag
+        git tag $TAG_NAME
+        git push origin $TAG_NAME
+        
+        VERSION=$(cat /workspace/version.txt)
+        TAG_NAME="v$VERSION"
+        
+        echo "Creating git tag: $TAG_NAME"
+        git config --global user.email "ci@recipe-management.com"
+        git config --global user.name "CI Bot"
+        
+        # Create and push the tag
+        git tag $TAG_NAME
+        git push origin $TAG_NAME
+        
+        echo "Release tagged: $TAG_NAME"
+        
+        # Parse version for next SNAPSHOT
+        IFS='.' read -r VERSION_MAJOR VERSION_MINOR VERSION_PATCH <<< "$VERSION"
+        NEXT_PATCH=$((VERSION_PATCH + 1))
+        NEXT_SNAPSHOT="$VERSION_MAJOR.$VERSION_MINOR.$NEXT_PATCH-SNAPSHOT"
+        echo "Updating pom.xml to next development version: $NEXT_SNAPSHOT"
+        
+        # Update the revision property in pom.xml
+        sed -i "s|<revision>.*</revision>|<revision>$NEXT_SNAPSHOT</revision>|" pom.xml
+        
+        # Commit and push the version bump
+        git add pom.xml
+        git commit -m "chore: bump version to $NEXT_SNAPSHOT"
+        git push origin main
 
 # Substitutions for different environments
 substitutions:
