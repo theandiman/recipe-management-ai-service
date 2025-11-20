@@ -1,6 +1,6 @@
 steps:
   # Determine version based on branch
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'determine-version'
     entrypoint: 'bash'
     args:
