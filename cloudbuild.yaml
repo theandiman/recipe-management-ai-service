@@ -116,6 +116,7 @@ steps:
     args:
       - '-s'
       - '/workspace/.m2/settings.xml'
+      - '-Dmaven.repo.local=/workspace/.m2/repo'
       - 'test'
 
   # Run linting (Checkstyle, SpotBugs, PMD)
@@ -125,6 +126,7 @@ steps:
     args:
       - '-s'
       - '/workspace/.m2/settings.xml'
+      - '-Dmaven.repo.local=/workspace/.m2/repo'
       - 'verify'
       - '-DskipTests'
 
@@ -137,7 +139,7 @@ steps:
       - |
         VERSION=$$(cat /workspace/version.txt)
         echo "Building application package with version: $${VERSION}"
-        mvn -s /workspace/.m2/settings.xml package -DskipTests
+        mvn -s /workspace/.m2/settings.xml -Dmaven.repo.local=/workspace/.m2/repo package -DskipTests
 
   # Build Docker image - ONLY on main branch
   - name: 'gcr.io/cloud-builders/docker'
