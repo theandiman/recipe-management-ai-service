@@ -15,6 +15,10 @@ steps:
         echo "Cloud Build BRANCH_NAME: $${BRANCH_NAME}"
         echo "Cloud Build TAG_NAME: $${TAG_NAME}"
 
+        echo "Current branch from git 2: $CURRENT_BRANCH"
+        echo "Cloud Build BRANCH_NAME 2: $BRANCH_NAME"
+        echo "Cloud Build TAG_NAME 2: $TAG_NAME"
+
         # Determine if this is a main branch build (should run deployment steps)
         IS_MAIN_BUILD="false"
         if [ "$${CURRENT_BRANCH}" = "main" ] || [ "$${BRANCH_NAME}" = "main" ] || [ "$${TAG_NAME}" != "" ]; then
