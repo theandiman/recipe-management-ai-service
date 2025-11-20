@@ -9,9 +9,14 @@ steps:
         set -e
         echo "Determining version for build..."
 
-        # Check if this is a main branch build by examining git refs
-        # Cloud Build sets BRANCH_NAME for branch triggers, TAG_NAME for tag triggers
-        if [ "$${BRANCH_NAME}" = "main" ] || [ "$${TAG_NAME}" != "" ]; then
+        # Get current branch using git (more reliable than Cloud Build substitutions)
+        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+        echo "Current branch from git: $${CURRENT_BRANCH}"
+        echo "Cloud Build BRANCH_NAME: $${BRANCH_NAME}"
+        echo "Cloud Build TAG_NAME: $${TAG_NAME}"
+
+        # Check if this is a main branch build
+        if [ "$${CURRENT_BRANCH}" = "main" ] || [ "$${BRANCH_NAME}" = "main" ] || [ "$${TAG_NAME}" != "" ]; then
           echo "Main branch or tag build detected - using release version"
           # For main branch, get the latest tag and bump patch version
           GIT_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
@@ -25,7 +30,7 @@ steps:
           VERSION="$${MAJOR}.$${MINOR}.$${NEW_PATCH}"
           echo "New version: $${VERSION}"
         else
-          echo "Feature/PR branch build detected (BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}) - using current SNAPSHOT version"
+          echo "Feature/PR branch build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}) - using current SNAPSHOT version"
           # For feature branches, use the current version from pom.xml
           CURRENT_VERSION=$$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           # Ensure it's a SNAPSHOT version for development
@@ -132,9 +137,12 @@ steps:
     args:
       - '-c'
       - |
+        # Get current branch using git (more reliable than Cloud Build substitutions)
+        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+        
         # Only push image on main branch or tag builds
-        if [ "$${BRANCH_NAME}" != "main" ] && [ "$${TAG_NAME}" = "" ]; then
-          echo "Feature/PR build detected (BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping Docker push"
+        if [ "$${CURRENT_BRANCH}" != "main" ] && [ "$${BRANCH_NAME}" != "main" ] && [ "$${TAG_NAME}" = "" ]; then
+          echo "Feature/PR build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping Docker push"
           exit 0
         fi
         
@@ -152,9 +160,12 @@ steps:
     args:
       - '-c'
       - |
+        # Get current branch using git (more reliable than Cloud Build substitutions)
+        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+        
         # Only deploy on main branch or tag builds
-        if [ "$${BRANCH_NAME}" != "main" ] && [ "$${TAG_NAME}" = "" ]; then
-          echo "Feature/PR build detected (BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping deployment"
+        if [ "$${CURRENT_BRANCH}" != "main" ] && [ "$${BRANCH_NAME}" != "main" ] && [ "$${TAG_NAME}" = "" ]; then
+          echo "Feature/PR build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping deployment"
           exit 0
         fi
         
@@ -172,9 +183,17 @@ steps:
     args:
       - '-c'
       - |
+        # Get current branch using git (more reliable than Cloud Build substitutions)
+        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+        
         # Only tag on main branch after successful deployment (not on tag builds)
-        if [ "$${BRANCH_NAME}" != "main" ] || [ "$${TAG_NAME}" != "" ]; then
-          echo "Feature/PR/tag build detected (BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping tagging"
+        if [ "$${CURRENT_BRANCH}" != "main" ] && [ "$${BRANCH_NAME}" != "main" ]; then
+          echo "Feature/PR/tag build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping tagging"
+          exit 0
+        fi
+        
+        if [ "$${TAG_NAME}" != "" ]; then
+          echo "Tag build detected (TAG_NAME: $${TAG_NAME}), skipping tagging to avoid loops"
           exit 0
         fi
         
