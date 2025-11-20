@@ -118,9 +118,72 @@ Allowed origins:
 - `https://recipe-mgmt-dev.web.app` (deployed frontend)
 - `https://recipe-mgmt-dev.firebaseapp.com`
 
-## Deployment
+## Versioning
 
-This service is deployed to Google Cloud Run via Terraform in the [recipe-management-infrastructure](https://github.com/theandiman/recipe-management-infrastructure) repository.
+This project uses semantic versioning (MAJOR.MINOR.PATCH) with automated version management through Maven's versions plugin.
+
+### Version Management
+
+- **Main Branch**: Releases are automatically versioned and tagged (e.g., `v1.0.0`, `v1.0.1`)
+- **Feature Branches**: Use SNAPSHOT versions for development (e.g., `1.0.1-SNAPSHOT`)
+- **Version Bumping**: Patch versions are automatically incremented on successful main branch deployments
+
+### Manual Version Management
+
+Use Maven commands for local development:
+
+```bash
+# Show current version
+mvn help:evaluate -Dexpression=project.version -q -DforceStdout
+
+# Bump versions
+mvn versions:set -DnewVersion=1.0.1    # Set specific version
+mvn versions:commit                    # Commit version changes
+
+# Add/remove SNAPSHOT suffix
+mvn versions:set -DnewVersion=1.0.1-SNAPSHOT    # Add SNAPSHOT
+mvn versions:set -DnewVersion=1.0.1             # Remove SNAPSHOT
+```
+
+### Version Script
+
+A convenience script is also provided for common version operations:
+
+```bash
+# Show current version
+./version.sh current
+
+# Bump versions
+./version.sh bump-patch    # 1.0.0 -> 1.0.1
+./version.sh bump-minor    # 1.0.0 -> 1.1.0
+./version.sh bump-major    # 1.0.0 -> 2.0.0
+
+# Set specific version
+./version.sh set-version 2.1.3
+
+# Manage SNAPSHOT versions
+./version.sh add-snapshot      # Add SNAPSHOT suffix
+./version.sh remove-snapshot   # Remove SNAPSHOT suffix
+```
+
+### CI/CD Versioning Process
+
+1. **Feature Branches/PRs**: Build with `1.0.0-SNAPSHOT` version
+2. **Main Branch Merges**: 
+   - Determine next version by incrementing patch number from latest git tag
+   - Build and deploy with release version (e.g., `1.0.1`)
+   - Create git tag (e.g., `v1.0.1`)
+   - Update `pom.xml` to next SNAPSHOT version (e.g., `1.0.2-SNAPSHOT`)
+
+### Branch Protection
+
+Version bumps are handled automatically by CI/CD and are compatible with branch protection rules that require:
+- ✅ Pull request reviews
+- ✅ Status checks (tests, linting, security scans)
+- ✅ Linear history
+- ✅ No force pushes
+
+The automated version management ensures releases are properly tagged and versioned without manual intervention.
 
 ## Environment Variables
 
