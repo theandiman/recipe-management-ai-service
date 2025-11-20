@@ -5,14 +5,14 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-       <!-- Bump Spring Boot parent to pick up security fixes in Spring Framework and transitive components. -->
-    <version>3.4.10</version>
+        <!-- Bump Spring Boot parent to pick up security fixes in Spring Framework and transitive components. -->
+        <version>3.4.10</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <groupId>com.recipe.ai</groupId>
     <artifactId>recipe-generator-service</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <name>recipe-generator-service</name>
     <description>Microservice for AI recipe generation using Gemini API</description>
 

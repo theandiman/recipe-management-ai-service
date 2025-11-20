@@ -22,9 +22,17 @@ steps:
           VERSION="$MAJOR.$MINOR.$NEW_PATCH"
           echo "New version: $VERSION"
         else
-          echo "Feature/PR branch detected - using SNAPSHOT version"
-          # For feature branches, use 1.0.0-SNAPSHOT
-          VERSION="1.0.0-SNAPSHOT"
+          echo "Feature/PR branch detected - using current SNAPSHOT version"
+          # For feature branches, use the current version from pom.xml
+          # This allows feature branches to work with whatever version is currently set
+          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          # Ensure it's a SNAPSHOT version for development
+          if [[ $CURRENT_VERSION != *-SNAPSHOT ]]; then
+            VERSION="${CURRENT_VERSION}-SNAPSHOT"
+          else
+            VERSION="$CURRENT_VERSION"
+          fi
+          echo "Using SNAPSHOT version: $VERSION"
         fi
 
         echo "Building with version: $VERSION"
@@ -174,29 +182,7 @@ steps:
         git tag $TAG_NAME
         git push origin $TAG_NAME
         
-        VERSION=$(cat /workspace/version.txt)
-        TAG_NAME="v$VERSION"
-        
-        echo "Creating git tag: $TAG_NAME"
-        git config --global user.email "ci@recipe-management.com"
-        git config --global user.name "CI Bot"
-        
-        # Create and push the tag
-        git tag $TAG_NAME
-        git push origin $TAG_NAME
-        
         echo "Release tagged: $TAG_NAME"
-
-        # Set next SNAPSHOT version for continued development
-        NEXT_PATCH=$((VERSION_PATCH + 1))
-        NEXT_SNAPSHOT="$VERSION_MAJOR.$VERSION_MINOR.$NEXT_PATCH-SNAPSHOT"
-        echo "Setting next development version: $NEXT_SNAPSHOT"
-        mvn versions:set -DnewVersion=$NEXT_SNAPSHOT -DgenerateBackupPoms=false
-
-        # Commit the version bump
-        git add pom.xml
-        git commit -m "chore: bump version to $NEXT_SNAPSHOT"
-        git push origin main
 
 # Substitutions for different environments
 substitutions:
