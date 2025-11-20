@@ -117,7 +117,10 @@ steps:
       - '-c'
       - |
         echo "Building Docker image..."
+        VERSION=$$(cat /workspace/version.txt)
+        echo "Tagging image with version: $${VERSION}"
         docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
+              -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION} \
               -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest .
 
   # Push Docker image - ONLY on main branch
@@ -134,7 +137,9 @@ steps:
         fi
         
         echo "Pushing Docker image..."
+        VERSION=$$(cat /workspace/version.txt)
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
+        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION}
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest
 
   # Deploy new image to Cloud Run - ONLY on main branch
