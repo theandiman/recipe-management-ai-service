@@ -163,7 +163,9 @@ steps:
       - '-c'
       - |
         IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
-
+        if [ "$BRANCH_NAME" = "main" ]; then
+          echo "Main branch detected"
+        fi
         # Only push image on main branch or tag builds
         if [ "$${IS_MAIN_BUILD}" != "true" ]; then
           echo "Feature/PR build detected, skipping Docker push"
