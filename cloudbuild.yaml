@@ -1,4 +1,33 @@
 steps:
+  # Detect branch type for conditional logic
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'detect-branch'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "Detecting branch type for build..."
+
+        # Get current branch using git (more reliable than Cloud Build substitutions)
+        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+        echo "Current branch from git: $${CURRENT_BRANCH}"
+        echo "Cloud Build BRANCH_NAME: $${BRANCH_NAME}"
+        echo "Cloud Build TAG_NAME: $${TAG_NAME}"
+
+        # Determine if this is a main branch build (should run deployment steps)
+        IS_MAIN_BUILD="false"
+        if [ "$${CURRENT_BRANCH}" = "main" ] || [ "$${BRANCH_NAME}" = "main" ] || [ "$${TAG_NAME}" != "" ]; then
+          IS_MAIN_BUILD="true"
+          echo "Main branch or tag build detected - will run deployment steps"
+        else
+          echo "Feature/PR branch build detected - will skip deployment steps"
+        fi
+
+        # Save the result for use by other steps
+        echo "$${IS_MAIN_BUILD}" > /workspace/is_main_build.txt
+        echo "Branch detection complete: IS_MAIN_BUILD=$${IS_MAIN_BUILD}"
+
   # Determine version based on branch
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'determine-version'
@@ -7,16 +36,10 @@ steps:
       - '-c'
       - |
         set -e
-        echo "Determining version for build..."
+        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
+        echo "Determining version for build (IS_MAIN_BUILD: $${IS_MAIN_BUILD})..."
 
-        # Get current branch using git (more reliable than Cloud Build substitutions)
-        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-        echo "Current branch from git: $${CURRENT_BRANCH}"
-        echo "Cloud Build BRANCH_NAME: $${BRANCH_NAME}"
-        echo "Cloud Build TAG_NAME: $${TAG_NAME}"
-
-        # Check if this is a main branch build
-        if [ "$${CURRENT_BRANCH}" = "main" ] || [ "$${BRANCH_NAME}" = "main" ] || [ "$${TAG_NAME}" != "" ]; then
+        if [ "$${IS_MAIN_BUILD}" = "true" ]; then
           echo "Main branch or tag build detected - using release version"
           # For main branch, get the latest tag and bump patch version
           GIT_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
@@ -30,7 +53,7 @@ steps:
           VERSION="$${MAJOR}.$${MINOR}.$${NEW_PATCH}"
           echo "New version: $${VERSION}"
         else
-          echo "Feature/PR branch build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}) - using current SNAPSHOT version"
+          echo "Feature/PR branch build detected - using current SNAPSHOT version"
           # For feature branches, use the current version from pom.xml
           CURRENT_VERSION=$$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           # Ensure it's a SNAPSHOT version for development
@@ -137,15 +160,14 @@ steps:
     args:
       - '-c'
       - |
-        # Get current branch using git (more reliable than Cloud Build substitutions)
-        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-        
+        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
+
         # Only push image on main branch or tag builds
-        if [ "$${CURRENT_BRANCH}" != "main" ] && [ "$${BRANCH_NAME}" != "main" ] && [ "$${TAG_NAME}" = "" ]; then
-          echo "Feature/PR build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping Docker push"
+        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+          echo "Feature/PR build detected, skipping Docker push"
           exit 0
         fi
-        
+
         echo "Pushing Docker image..."
         VERSION=$$(cat /workspace/version.txt)
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
@@ -160,20 +182,19 @@ steps:
     args:
       - '-c'
       - |
-        # Get current branch using git (more reliable than Cloud Build substitutions)
-        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-        
+        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
+
         # Only deploy on main branch or tag builds
-        if [ "$${CURRENT_BRANCH}" != "main" ] && [ "$${BRANCH_NAME}" != "main" ] && [ "$${TAG_NAME}" = "" ]; then
-          echo "Feature/PR build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping deployment"
+        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+          echo "Feature/PR build detected, skipping deployment"
           exit 0
         fi
-        
+
         echo "Deploying new image to Cloud Run..."
         gcloud run services update ${_SERVICE_NAME} \
           --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest \
           --region ${_REGION}
-        
+
         echo "Deployment complete ✓"
 
   # Tag the release after successful deployment - ONLY on main branch
@@ -183,31 +204,30 @@ steps:
     args:
       - '-c'
       - |
-        # Get current branch using git (more reliable than Cloud Build substitutions)
-        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-        
+        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
+
         # Only tag on main branch after successful deployment (not on tag builds)
-        if [ "$${CURRENT_BRANCH}" != "main" ] && [ "$${BRANCH_NAME}" != "main" ]; then
-          echo "Feature/PR/tag build detected (branch: $${CURRENT_BRANCH}, BRANCH_NAME: $${BRANCH_NAME}, TAG_NAME: $${TAG_NAME}), skipping tagging"
+        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+          echo "Feature/PR/tag build detected, skipping tagging"
           exit 0
         fi
-        
+
         if [ "$${TAG_NAME}" != "" ]; then
           echo "Tag build detected (TAG_NAME: $${TAG_NAME}), skipping tagging to avoid loops"
           exit 0
         fi
-        
+
         VERSION=$$(cat /workspace/version.txt)
         TAG_NAME="v$${VERSION}"
-        
+
         echo "Creating git tag: $${TAG_NAME}"
         git config --global user.email "ci@recipe-management.com"
         git config --global user.name "CI Bot"
-        
+
         # Create and push the tag
         git tag $${TAG_NAME}
         git push origin $${TAG_NAME}
-        
+
         echo "Release tagged: $${TAG_NAME}"
 
 # Substitutions for different environments
