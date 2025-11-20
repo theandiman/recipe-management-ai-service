@@ -6,19 +6,24 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$SCRIPT_DIR"
 
 cd "$PROJECT_DIR"
 
 # Function to get current version from pom.xml
 get_current_version() {
-    grep -oP '<revision>\K[^<]+' pom.xml
+    if [ ! -f "pom.xml" ]; then
+        echo "Error: pom.xml not found. Run this script from the project root directory." >&2
+        exit 1
+    fi
+    grep '<revision>' pom.xml | sed 's/.*<revision>\(.*\)<\/revision>.*/\1/' | head -1
 }
 
 # Function to update version in pom.xml
 set_version() {
     local new_version=$1
-    sed -i "s|<revision>.*</revision>|<revision>$new_version</revision>|" pom.xml
+    sed -i.bak "s|<revision>.*</revision>|<revision>$new_version</revision>|" pom.xml
+    rm pom.xml.bak 2>/dev/null || true
     echo "Updated version to: $new_version"
 }
 
