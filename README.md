@@ -120,7 +120,7 @@ Allowed origins:
 
 ## Versioning
 
-This project uses semantic versioning (MAJOR.MINOR.PATCH) with automated version management through CI/CD.
+This project uses semantic versioning (MAJOR.MINOR.PATCH) with automated version management through Maven's versions plugin.
 
 ### Version Management
 
@@ -130,7 +130,24 @@ This project uses semantic versioning (MAJOR.MINOR.PATCH) with automated version
 
 ### Manual Version Management
 
-Use the provided version script for local development:
+Use Maven commands for local development:
+
+```bash
+# Show current version
+mvn help:evaluate -Dexpression=project.version -q -DforceStdout
+
+# Bump versions
+mvn versions:set -DnewVersion=1.0.1    # Set specific version
+mvn versions:commit                    # Commit version changes
+
+# Add/remove SNAPSHOT suffix
+mvn versions:set -DnewVersion=1.0.1-SNAPSHOT    # Add SNAPSHOT
+mvn versions:set -DnewVersion=1.0.1             # Remove SNAPSHOT
+```
+
+### Version Script
+
+A convenience script is also provided for common version operations:
 
 ```bash
 # Show current version
@@ -143,6 +160,10 @@ Use the provided version script for local development:
 
 # Set specific version
 ./version.sh set-version 2.1.3
+
+# Manage SNAPSHOT versions
+./version.sh add-snapshot      # Add SNAPSHOT suffix
+./version.sh remove-snapshot   # Remove SNAPSHOT suffix
 ```
 
 ### CI/CD Versioning Process
