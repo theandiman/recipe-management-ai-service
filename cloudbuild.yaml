@@ -7,36 +7,36 @@ steps:
       - '-c'
       - |
         set -e
-        echo "Determining version for branch: $BRANCH_NAME"
+        echo "Determining version for branch: $${BRANCH_NAME}"
 
-        if [ "$BRANCH_NAME" = "main" ]; then
+        if [ "$${BRANCH_NAME}" = "main" ]; then
           echo "Main branch detected - using release version"
           # For main branch, get the latest tag and bump patch version
-          GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          GIT_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           # Remove 'v' prefix if present
-          CLEAN_TAG=${GIT_TAG#v}
-          echo "Latest tag: $CLEAN_TAG"
+          CLEAN_TAG=$${GIT_TAG#v}
+          echo "Latest tag: $${CLEAN_TAG}"
 
           # Parse version components
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CLEAN_TAG"
-          NEW_PATCH=$((PATCH + 1))
-          VERSION="$MAJOR.$MINOR.$NEW_PATCH"
-          echo "New version: $VERSION"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$${CLEAN_TAG}"
+          NEW_PATCH=$$((PATCH + 1))
+          VERSION="$${MAJOR}.$${MINOR}.$${NEW_PATCH}"
+          echo "New version: $${VERSION}"
         else
           echo "Feature/PR branch detected - using current SNAPSHOT version"
           # For feature branches, use the current version from pom.xml
-          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          CURRENT_VERSION=$$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           # Ensure it's a SNAPSHOT version for development
-          if [[ $CURRENT_VERSION != *-SNAPSHOT ]]; then
-            VERSION="${CURRENT_VERSION}-SNAPSHOT"
+          if [[ $${CURRENT_VERSION} != *-SNAPSHOT ]]; then
+            VERSION="$${CURRENT_VERSION}-SNAPSHOT"
           else
-            VERSION="$CURRENT_VERSION"
+            VERSION="$${CURRENT_VERSION}"
           fi
-          echo "Using SNAPSHOT version: $VERSION"
+          echo "Using SNAPSHOT version: $${VERSION}"
         fi
 
-        echo "Building with version: $VERSION"
-        echo "$VERSION" > /workspace/version.txt
+        echo "Building with version: $${VERSION}"
+        echo "$${VERSION}" > /workspace/version.txt
 
   # Set version using Maven versions plugin
   - name: 'maven:3.9-eclipse-temurin-21'
@@ -45,9 +45,9 @@ steps:
     args:
       - '-c'
       - |
-        VERSION=$(cat /workspace/version.txt)
-        echo "Setting Maven version to: $VERSION"
-        mvn versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false  # Configure Maven settings to authenticate to Artifact Registry via an access token
+        VERSION=$$(cat /workspace/version.txt)
+        echo "Setting Maven version to: $${VERSION}"
+        mvn versions:set -DnewVersion=$${VERSION} -DgenerateBackupPoms=false  # Configure Maven settings to authenticate to Artifact Registry via an access token
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'configure-maven-settings'
     entrypoint: 'bash'
@@ -105,8 +105,8 @@ steps:
     args:
       - '-c'
       - |
-        VERSION=$(cat /workspace/version.txt)
-        echo "Building application package with version: $VERSION"
+        VERSION=$$(cat /workspace/version.txt)
+        echo "Building application package with version: $${VERSION}"
         mvn -s /workspace/.m2/settings.xml package -DskipTests
 
   # Build Docker image - ONLY on main branch
@@ -128,8 +128,8 @@ steps:
       - '-c'
       - |
         # Only push image on main branch
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "PR build detected (branch: $BRANCH_NAME), skipping Docker push"
+        if [ "$${BRANCH_NAME}" != "main" ]; then
+          echo "PR build detected (branch: $${BRANCH_NAME}), skipping Docker push"
           exit 0
         fi
         
@@ -146,8 +146,8 @@ steps:
       - '-c'
       - |
         # Only deploy on main branch
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "PR build detected (branch: $BRANCH_NAME), skipping deployment"
+        if [ "$${BRANCH_NAME}" != "main" ]; then
+          echo "PR build detected (branch: $${BRANCH_NAME}), skipping deployment"
           exit 0
         fi
         
@@ -166,23 +166,23 @@ steps:
       - '-c'
       - |
         # Only tag on main branch after successful deployment
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "PR build detected (branch: $BRANCH_NAME), skipping tagging"
+        if [ "$${BRANCH_NAME}" != "main" ]; then
+          echo "PR build detected (branch: $${BRANCH_NAME}), skipping tagging"
           exit 0
         fi
         
-        VERSION=$(cat /workspace/version.txt)
-        TAG_NAME="v$VERSION"
+        VERSION=$$(cat /workspace/version.txt)
+        TAG_NAME="v$${VERSION}"
         
-        echo "Creating git tag: $TAG_NAME"
+        echo "Creating git tag: $${TAG_NAME}"
         git config --global user.email "ci@recipe-management.com"
         git config --global user.name "CI Bot"
         
         # Create and push the tag
-        git tag $TAG_NAME
-        git push origin $TAG_NAME
+        git tag $${TAG_NAME}
+        git push origin $${TAG_NAME}
         
-        echo "Release tagged: $TAG_NAME"
+        echo "Release tagged: $${TAG_NAME}"
 
 # Substitutions for different environments
 substitutions:
