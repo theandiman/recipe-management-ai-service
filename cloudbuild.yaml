@@ -1,4 +1,4 @@
-  # Determine version based on branch using version.sh script
+steps:  
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'determine-version'
     entrypoint: 'bash'
