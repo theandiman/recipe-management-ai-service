@@ -1,44 +1,12 @@
-steps:
-  # Detect branch type for conditional logic
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'detect-branch'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        set -e
-        echo "Detecting branch type for build..."
-
-        # Get current branch using git
-        CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-        echo "Current branch from git: $${CURRENT_BRANCH}"
-        echo "Cloud Build BRANCH_NAME: $${BRANCH_NAME}"
-
-        # Determine if this is a main branch build (should run deployment steps)
-        IS_MAIN_BUILD="false"
-        if [ "$${CURRENT_BRANCH}" = "main" ] || [ "$${BRANCH_NAME}" = "main" ]; then
-          IS_MAIN_BUILD="true"
-          echo "Main branch build detected - will run deployment steps"
-        else
-          echo "Feature/PR branch build detected - will skip deployment steps"
-        fi
-
-        # Save the result for use by other steps
-        echo "$${IS_MAIN_BUILD}" > /workspace/is_main_build.txt
-        echo "Branch detection complete: IS_MAIN_BUILD=$${IS_MAIN_BUILD}"
-
-  # Determine version based on branch using version.sh script
+steps:  
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'determine-version'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        set -e
-        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
-        echo "Determining version for build (IS_MAIN_BUILD: $${IS_MAIN_BUILD})..."
 
-        if [ "$${IS_MAIN_BUILD}" = "true" ]; then
+        if [ "$BRANCH_NAME" = "main" ]; then
           echo "Main branch build detected - bumping patch version for release"
           # Use version.sh script to bump patch version
           cd /workspace
@@ -127,10 +95,8 @@ steps:
     args:
       - '-c'
       - |
-        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
-
         # Only build image on main branch
-        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+        if [ "$BRANCH_NAME" != "main" ]; then
           echo "Feature/PR build detected, skipping Docker build"
           exit 0
         fi
@@ -151,10 +117,8 @@ steps:
     args:
       - '-c'
       - |
-        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
-
         # Only push image on main branch
-        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+        if [ "$BRANCH_NAME" != "main" ]; then
           echo "Feature/PR build detected, skipping Docker push"
           exit 0
         fi
@@ -175,10 +139,8 @@ steps:
     args:
       - '-c'
       - |
-        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
-
-        # Only deploy on main branch
-        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+      
+        if [ "$BRANCH_NAME" != "main" ]; then
           echo "Feature/PR build detected, skipping deployment"
           exit 0
         fi
@@ -197,10 +159,8 @@ steps:
     args:
       - '-c'
       - |
-        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
 
-        # Only prepare next version on main branch after successful deployment
-        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+        if [ "$BRANCH_NAME" != "main" ]; then
           echo "Feature/PR build detected, skipping version preparation"
           exit 0
         fi
