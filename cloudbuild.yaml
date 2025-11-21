@@ -102,11 +102,21 @@ steps:
         cd /workspace
         VERSION=$$(cat /workspace/.build_version)
         echo "Tagging image with version: $${VERSION}"
+        
+        # Set variables explicitly
+        REGION="${_REGION}"
+        PROJECT_ID="${PROJECT_ID}"
+        ARTIFACT_REGISTRY_REPO="${_ARTIFACT_REGISTRY_REPO}"
+        SERVICE_NAME="${_SERVICE_NAME}"
+        SHORT_SHA="${SHORT_SHA}"
+        
+        # Build Docker image with explicit path
+        echo "Executing: docker build -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${SHORT_SHA} -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${VERSION} -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:latest ."
         docker build \
-          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
-          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION} \
-          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest \
-          /workspace
+          -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${SHORT_SHA} \
+          -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${VERSION} \
+          -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:latest \
+          .
 
   # Push Docker image - ONLY on main branch
   - name: 'gcr.io/cloud-builders/docker'
@@ -124,9 +134,17 @@ steps:
         echo "Pushing Docker image..."
         cd /workspace
         VERSION=$$(cat /workspace/.build_version)
-        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
-        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION}
-        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest
+        
+        # Set variables explicitly
+        REGION="${_REGION}"
+        PROJECT_ID="${PROJECT_ID}"
+        ARTIFACT_REGISTRY_REPO="${_ARTIFACT_REGISTRY_REPO}"
+        SERVICE_NAME="${_SERVICE_NAME}"
+        SHORT_SHA="${SHORT_SHA}"
+        
+        docker push $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${SHORT_SHA}
+        docker push $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${VERSION}
+        docker push $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:latest
 
   # Deploy new image to Cloud Run - ONLY on main branch
   # Note: Only updates the image, other config managed by Terraform
