@@ -68,7 +68,7 @@ steps:
       - |
         VERSION=$$(cat /workspace/version.txt)
         echo "Setting Maven version to: $${VERSION}"
-        mvn versions:set -DnewVersion=$${VERSION} -DgenerateBackupPoms=false  # Configure Maven settings to authenticate to Artifact Registry via an access token
+        mvn org.codehaus.mojo:versions-maven-plugin:2.16.2:set -DnewVersion=$${VERSION} -DgenerateBackupPoms=false  # Configure Maven settings to authenticate to Artifact Registry via an access token
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'configure-maven-settings'
     entrypoint: 'bash'
