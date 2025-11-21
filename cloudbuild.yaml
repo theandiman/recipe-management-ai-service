@@ -102,6 +102,8 @@ steps:
         fi
 
         echo "Building Docker image..."
+        # Install Docker CLI
+        apt-get update && apt-get install -y docker.io
         cd /workspace
         chmod +x version.sh
         VERSION=$$(./version.sh current)
@@ -124,6 +126,8 @@ steps:
         fi
 
         echo "Pushing Docker image..."
+        # Install Docker CLI
+        apt-get update && apt-get install -y docker.io
         cd /workspace
         chmod +x version.sh
         VERSION=$$(./version.sh current)
