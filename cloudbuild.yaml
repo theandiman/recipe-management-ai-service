@@ -95,11 +95,6 @@ steps:
     args:
       - '-c'
       - |
-        # Only build image on main branch
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "Feature/PR build detected, skipping Docker build"
-          exit 0
-        fi
 
         echo "Building Docker image..."
         # Install Docker CLI
