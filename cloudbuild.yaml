@@ -12,7 +12,7 @@ steps:
           cd /workspace
           chmod +x version.sh
           ./version.sh bump-patch
-          VERSION=$$(./version.sh current)
+          VERSION=$$(./version.sh current | sed 's/Current version: //')
           echo "New release version: $${VERSION}"
         else
           echo "Feature/PR branch build detected - ensuring SNAPSHOT version"
@@ -20,7 +20,7 @@ steps:
           cd /workspace
           chmod +x version.sh
           ./version.sh add-snapshot
-          VERSION=$$(./version.sh current)
+          VERSION=$$(./version.sh current | sed 's/Current version: //')
           echo "Using SNAPSHOT version: $${VERSION}"
         fi
 
@@ -188,7 +188,7 @@ steps:
         ./version.sh bump-patch
         ./version.sh add-snapshot
 
-        NEXT_VERSION=$$(./version.sh current)
+        NEXT_VERSION=$$(./version.sh current | sed 's/Current version: //')
         echo "Next development version prepared: $${NEXT_VERSION}"
 
         # Configure git for committing version changes
