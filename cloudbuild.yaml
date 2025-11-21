@@ -9,17 +9,16 @@ steps:
         set -e
         echo "Detecting branch type for build..."
 
-        # Get current branch using git (more reliable than Cloud Build substitutions)
+        # Get current branch using git
         CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
         echo "Current branch from git: $${CURRENT_BRANCH}"
         echo "Cloud Build BRANCH_NAME: $${BRANCH_NAME}"
-        echo "Cloud Build TAG_NAME: $${TAG_NAME}"
 
         # Determine if this is a main branch build (should run deployment steps)
         IS_MAIN_BUILD="false"
-        if [ "$${CURRENT_BRANCH}" = "main" ] || [ "$${BRANCH_NAME}" = "main" ] || [ "$${TAG_NAME}" != "" ]; then
+        if [ "$${CURRENT_BRANCH}" = "main" ] || [ "$${BRANCH_NAME}" = "main" ]; then
           IS_MAIN_BUILD="true"
-          echo "Main branch or tag build detected - will run deployment steps"
+          echo "Main branch build detected - will run deployment steps"
         else
           echo "Feature/PR branch build detected - will skip deployment steps"
         fi
@@ -28,7 +27,7 @@ steps:
         echo "$${IS_MAIN_BUILD}" > /workspace/is_main_build.txt
         echo "Branch detection complete: IS_MAIN_BUILD=$${IS_MAIN_BUILD}"
 
-  # Determine version based on branch
+  # Determine version based on branch using version.sh script
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'determine-version'
     entrypoint: 'bash'
@@ -40,28 +39,18 @@ steps:
         echo "Determining version for build (IS_MAIN_BUILD: $${IS_MAIN_BUILD})..."
 
         if [ "$${IS_MAIN_BUILD}" = "true" ]; then
-          echo "Main branch or tag build detected - using release version"
-          # For main branch, get the latest tag and bump patch version
-          GIT_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          # Remove 'v' prefix if present
-          CLEAN_TAG=$${GIT_TAG#v}
-          echo "Latest tag: $${CLEAN_TAG}"
-
-          # Parse version components
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$${CLEAN_TAG}"
-          NEW_PATCH=$$((PATCH + 1))
-          VERSION="$${MAJOR}.$${MINOR}.$${NEW_PATCH}"
-          echo "New version: $${VERSION}"
+          echo "Main branch build detected - bumping patch version for release"
+          # Use version.sh script to bump patch version
+          cd /workspace
+          chmod +x version.sh
+          ./version.sh bump-patch
+          VERSION=$$(./version.sh current)
+          echo "New release version: $${VERSION}"
         else
           echo "Feature/PR branch build detected - using current SNAPSHOT version"
-          # For feature branches, use the current version from pom.xml
-          CURRENT_VERSION=$$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          # Ensure it's a SNAPSHOT version for development
-          if [[ $${CURRENT_VERSION} != *-SNAPSHOT ]]; then
-            VERSION="$${CURRENT_VERSION}-SNAPSHOT"
-          else
-            VERSION="$${CURRENT_VERSION}"
-          fi
+          # For feature branches, use the current version from pom.xml (should be SNAPSHOT)
+          cd /workspace
+          VERSION=$$(./version.sh current)
           echo "Using SNAPSHOT version: $${VERSION}"
         fi
 
@@ -162,7 +151,7 @@ steps:
       - |
         IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
 
-        # Only push image on main branch or tag builds
+        # Only push image on main branch
         if [ "$${IS_MAIN_BUILD}" != "true" ]; then
           echo "Feature/PR build detected, skipping Docker push"
           exit 0
@@ -184,7 +173,7 @@ steps:
       - |
         IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
 
-        # Only deploy on main branch or tag builds
+        # Only deploy on main branch
         if [ "$${IS_MAIN_BUILD}" != "true" ]; then
           echo "Feature/PR build detected, skipping deployment"
           exit 0
@@ -206,14 +195,9 @@ steps:
       - |
         IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
 
-        # Only tag on main branch after successful deployment (not on tag builds)
+        # Only tag on main branch after successful deployment
         if [ "$${IS_MAIN_BUILD}" != "true" ]; then
-          echo "Feature/PR/tag build detected, skipping tagging"
-          exit 0
-        fi
-
-        if [ "$${TAG_NAME}" != "" ]; then
-          echo "Tag build detected (TAG_NAME: $${TAG_NAME}), skipping tagging to avoid loops"
+          echo "Feature/PR build detected, skipping tagging"
           exit 0
         fi
 
