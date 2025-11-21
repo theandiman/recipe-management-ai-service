@@ -188,7 +188,42 @@ steps:
 
         echo "Deployment complete ✓"
 
-# Substitutions for different environments
+  # Prepare next development version - ONLY on main branch
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'prepare-next-version'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
+
+        # Only prepare next version on main branch after successful deployment
+        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
+          echo "Feature/PR build detected, skipping version preparation"
+          exit 0
+        fi
+
+        echo "Preparing next development version..."
+        cd /workspace
+        chmod +x version.sh
+
+        # Bump to next SNAPSHOT version for continued development
+        ./version.sh bump-patch
+        ./version.sh add-snapshot
+
+        NEXT_VERSION=$$(./version.sh current)
+        echo "Next development version prepared: $${NEXT_VERSION}"
+
+        # Configure git for committing version changes
+        git config --global user.email "ci@recipe-management.com"
+        git config --global user.name "CI Bot"
+
+        # Commit the version change back to main
+        git add pom.xml
+        git commit -m "Bump version to $${NEXT_VERSION} for next development cycle"
+        git push origin main
+
+        echo "Version $${NEXT_VERSION} committed to main ✓"
 substitutions:
   _SERVICE_NAME: 'recipe-ai-service'
   _REGION: 'europe-west2'
