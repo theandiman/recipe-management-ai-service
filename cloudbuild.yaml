@@ -25,6 +25,8 @@ steps:
         fi
 
         echo "Building with version: $${VERSION}"
+        # Save version for use in subsequent steps
+        echo "$${VERSION}" > /workspace/.build_version
         # Version is already set in pom.xml by version.sh script
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'configure-maven-settings'
@@ -89,7 +91,7 @@ steps:
         mvn -s /workspace/.m2/settings.xml -Dmaven.repo.local=/workspace/.m2/repo package -DskipTests
 
   # Build Docker image - ONLY on main branch
-  - name: 'maven:3.9-eclipse-temurin-21'
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'
     entrypoint: 'bash'
     args:
@@ -97,11 +99,8 @@ steps:
       - |
 
         echo "Building Docker image..."
-        # Install Docker CLI
-        apt-get update && apt-get install -y docker.io
         cd /workspace
-        chmod +x version.sh
-        VERSION=$$(./version.sh current)
+        VERSION=$$(cat /workspace/.build_version)
         echo "Tagging image with version: $${VERSION}"
         docker build \
           -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
@@ -110,7 +109,7 @@ steps:
           /workspace
 
   # Push Docker image - ONLY on main branch
-  - name: 'maven:3.9-eclipse-temurin-21'
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'push-image'
     entrypoint: 'bash'
     args:
@@ -123,11 +122,8 @@ steps:
         fi
 
         echo "Pushing Docker image..."
-        # Install Docker CLI
-        apt-get update && apt-get install -y docker.io
         cd /workspace
-        chmod +x version.sh
-        VERSION=$$(./version.sh current)
+        VERSION=$$(cat /workspace/.build_version)
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION}
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest
