@@ -6,7 +6,7 @@ steps:
       - '-c'
       - |
 
-        if [ "$BRANCH_NAME" != "main" ]; then
+        if [ "$BRANCH_NAME" = "main" ]; then
           echo "Main branch build detected - bumping patch version for release"
           # Use version.sh script to bump patch version
           cd /workspace
