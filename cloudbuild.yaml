@@ -47,9 +47,11 @@ steps:
           VERSION=$$(./version.sh current)
           echo "New release version: $${VERSION}"
         else
-          echo "Feature/PR branch build detected - using current SNAPSHOT version"
-          # For feature branches, use the current version from pom.xml (should be SNAPSHOT)
+          echo "Feature/PR branch build detected - ensuring SNAPSHOT version"
+          # For feature branches, ensure version has SNAPSHOT suffix
           cd /workspace
+          chmod +x version.sh
+          ./version.sh add-snapshot
           VERSION=$$(./version.sh current)
           echo "Using SNAPSHOT version: $${VERSION}"
         fi
@@ -185,34 +187,6 @@ steps:
           --region ${_REGION}
 
         echo "Deployment complete ✓"
-
-  # Tag the release after successful deployment - ONLY on main branch
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'tag-release'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        IS_MAIN_BUILD=$$(cat /workspace/is_main_build.txt)
-
-        # Only tag on main branch after successful deployment
-        if [ "$${IS_MAIN_BUILD}" != "true" ]; then
-          echo "Feature/PR build detected, skipping tagging"
-          exit 0
-        fi
-
-        VERSION=$$(cat /workspace/version.txt)
-        TAG_NAME="v$${VERSION}"
-
-        echo "Creating git tag: $${TAG_NAME}"
-        git config --global user.email "ci@recipe-management.com"
-        git config --global user.name "CI Bot"
-
-        # Create and push the tag
-        git tag $${TAG_NAME}
-        git push origin $${TAG_NAME}
-
-        echo "Release tagged: $${TAG_NAME}"
 
 # Substitutions for different environments
 substitutions:
