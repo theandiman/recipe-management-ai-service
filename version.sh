@@ -19,7 +19,7 @@ get_current_version() {
 set_version() {
     local new_version=$1
     echo "Setting version to: $new_version"
-    mvn versions:set -DnewVersion="$new_version" -DgenerateBackupPoms=false
+    mvn org.codehaus.mojo:versions-maven-plugin:2.16.2:set -DnewVersion="$new_version" -DgenerateBackupPoms=false
     echo "Version updated successfully"
 }
 
