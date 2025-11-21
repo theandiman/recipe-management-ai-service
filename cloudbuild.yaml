@@ -57,18 +57,7 @@ steps:
         fi
 
         echo "Building with version: $${VERSION}"
-        echo "$${VERSION}" > /workspace/version.txt
-
-  # Set version using Maven versions plugin
-  - name: 'maven:3.9-eclipse-temurin-21'
-    id: 'set-version'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        VERSION=$$(cat /workspace/version.txt)
-        echo "Setting Maven version to: $${VERSION}"
-        mvn org.codehaus.mojo:versions-maven-plugin:2.16.2:set -DnewVersion=$${VERSION} -DgenerateBackupPoms=false  # Configure Maven settings to authenticate to Artifact Registry via an access token
+        # Version is already set in pom.xml by version.sh script
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'configure-maven-settings'
     entrypoint: 'bash'
@@ -128,8 +117,7 @@ steps:
     args:
       - '-c'
       - |
-        VERSION=$$(cat /workspace/version.txt)
-        echo "Building application package with version: $${VERSION}"
+        echo "Building application package..."
         mvn -s /workspace/.m2/settings.xml -Dmaven.repo.local=/workspace/.m2/repo package -DskipTests
 
   # Build Docker image - ONLY on main branch
@@ -140,7 +128,9 @@ steps:
       - '-c'
       - |
         echo "Building Docker image..."
-        VERSION=$$(cat /workspace/version.txt)
+        cd /workspace
+        chmod +x version.sh
+        VERSION=$$(./version.sh current)
         echo "Tagging image with version: $${VERSION}"
         docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
               -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION} \
@@ -166,7 +156,9 @@ steps:
         fi
 
         echo "Pushing Docker image..."
-        VERSION=$$(cat /workspace/version.txt)
+        cd /workspace
+        chmod +x version.sh
+        VERSION=$$(./version.sh current)
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION}
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest
