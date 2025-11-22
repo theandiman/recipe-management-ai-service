@@ -78,7 +78,7 @@ jobs:
             <server>
               <id>github</id>
               <username>${{ github.actor }}</username>
-              <password>${{ secrets.PACKAGES_TOKEN }}</password>
+              <password>${{ secrets.GITHUB_TOKEN }}</password>
             </server>
           </servers>
         </settings>
@@ -104,7 +104,7 @@ jobs:
         echo "Tagging image with version: $VERSION"
 
         # Login to GitHub Container Registry
-        echo "${{ secrets.PACKAGES_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
         # Login to GCP Artifact Registry
         gcloud auth configure-docker $REGION-docker.pkg.dev
