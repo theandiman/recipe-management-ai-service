@@ -1,2 +1,0 @@
-          --set-env-vars "SPRING_PROFILES_ACTIVE=production,firebase.project.id=recipe-mgmt-dev,auth.enabled=true,GOOGLE_APPLICATION_CREDENTIALS=/secrets/firebase-sa.json" \
-          --update-secrets "GEMINI_API_KEY=gemini-api-key:latest,/secrets/firebase-sa.json=firebase-service-account:latest"
