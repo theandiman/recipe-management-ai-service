@@ -168,7 +168,7 @@ steps:
         echo "Deployment complete ✓"
 
   # Prepare next development version - ONLY on main branch
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'prepare-next-version'
     entrypoint: 'bash'
     args:
@@ -194,6 +194,10 @@ steps:
         # Configure git for committing version changes
         git config --global user.email "ci@recipe-management.com"
         git config --global user.name "CI Bot"
+
+        # Ensure we're on the main branch and have the latest changes
+        git checkout main
+        git pull origin main
 
         # Commit the version change back to main
         git add pom.xml
