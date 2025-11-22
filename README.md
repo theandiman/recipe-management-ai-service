@@ -168,22 +168,43 @@ A convenience script is also provided for common version operations:
 
 ### CI/CD Versioning Process
 
-1. **Feature Branches/PRs**: Build with `1.0.0-SNAPSHOT` version
-2. **Main Branch Merges**: 
+The service uses GitHub Actions for CI/CD with automatic versioning:
+
+1. **Feature Branches/PRs**: Build with `SNAPSHOT` version for testing
+2. **Main Branch Merges**:
    - Determine next version by incrementing patch number from latest git tag
    - Build and deploy with release version (e.g., `1.0.1`)
-   - Create git tag (e.g., `v1.0.1`)
    - Update `pom.xml` to next SNAPSHOT version (e.g., `1.0.2-SNAPSHOT`)
+   - Push version changes back to main
+
+### Concurrency Control
+
+GitHub Actions prevents concurrent builds on the main branch using:
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+```
+
+This ensures only one build runs on main at a time, preventing:
+- Race conditions in version bumping
+- Concurrent deployments
+- Artifact conflicts
 
 ### Branch Protection
 
-Version bumps are handled automatically by CI/CD and are compatible with branch protection rules that require:
+Version bumps are handled automatically by GitHub Actions and are compatible with branch protection rules that require:
 - ✅ Pull request reviews
 - ✅ Status checks (tests, linting, security scans)
 - ✅ Linear history
 - ✅ No force pushes
 
-The automated version management ensures releases are properly tagged and versioned without manual intervention.
+### Required GitHub Secrets
+
+Set these in repository Settings → Secrets and variables → Actions:
+
+- `GCP_PROJECT_ID` - Google Cloud Project ID
+- `GCP_SA_KEY` - Service account key JSON for GCP authentication
 
 ## Environment Variables
 
