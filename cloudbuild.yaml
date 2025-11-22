@@ -17,9 +17,9 @@ steps:
         CURRENT_BUILD_ID="${BUILD_ID}"
 
         # Query for running builds on main branch with the same trigger
-        # Filter by status=PENDING|WORKING and branch=main
+        # Filter by status=PENDING|WORKING and exclude current build
         RUNNING_BUILDS=$(gcloud builds list \
-          --filter="status:(PENDING OR WORKING) AND substitutions.BRANCH_NAME:main AND id!=${CURRENT_BUILD_ID}" \
+          --filter="status:(PENDING OR WORKING) AND id!=${CURRENT_BUILD_ID}" \
           --format="value(id)" \
           --limit=10)
 
