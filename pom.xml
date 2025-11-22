@@ -341,12 +341,12 @@
         <repository>
             <id>github</id>
             <name>GitHub OWNER Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/theandiman/recipe-generato-stack-a</url>
+            <url>https://maven.pkg.github.com/${GITHUB_REPOSITORY}</url>
         </repository>
         <snapshotRepository>
             <id>github</id>
             <name>GitHub OWNER Apache Maven Snapshot Repository</name>
-            <url>https://maven.pkg.github.com/theandiman/recipe-generato-stack-a</url>
+            <url>https://maven.pkg.github.com/${GITHUB_REPOSITORY}</url>
         </snapshotRepository>
     </distributionManagement>
     <!-- Allow skipping SpotBugs on environments where SpotBugs cannot analyze the classfile version (e.g. very new JDKs). -->
