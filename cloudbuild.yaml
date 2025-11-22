@@ -12,7 +12,7 @@ steps:
           cd /workspace
           chmod +x version.sh
           ./version.sh bump-patch
-          VERSION=$$(./version.sh current)
+          VERSION=$$(./version.sh current | sed 's/Current version: //')
           echo "New release version: $${VERSION}"
         else
           echo "Feature/PR branch build detected - ensuring SNAPSHOT version"
@@ -20,11 +20,13 @@ steps:
           cd /workspace
           chmod +x version.sh
           ./version.sh add-snapshot
-          VERSION=$$(./version.sh current)
+          VERSION=$$(./version.sh current | sed 's/Current version: //')
           echo "Using SNAPSHOT version: $${VERSION}"
         fi
 
         echo "Building with version: $${VERSION}"
+        # Save version for use in subsequent steps
+        echo "$${VERSION}" > /workspace/.build_version
         # Version is already set in pom.xml by version.sh script
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'configure-maven-settings'
@@ -89,29 +91,35 @@ steps:
         mvn -s /workspace/.m2/settings.xml -Dmaven.repo.local=/workspace/.m2/repo package -DskipTests
 
   # Build Docker image - ONLY on main branch
-  - name: 'maven:3.9-eclipse-temurin-21'
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        # Only build image on main branch
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "Feature/PR build detected, skipping Docker build"
-          exit 0
-        fi
 
         echo "Building Docker image..."
         cd /workspace
-        chmod +x version.sh
-        VERSION=$$(./version.sh current)
+        VERSION=$$(cat /workspace/.build_version)
         echo "Tagging image with version: $${VERSION}"
-        docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
-              -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION} \
-              -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest .
+        
+        # Set variables explicitly
+        REGION="${_REGION}"
+        PROJECT_ID="${PROJECT_ID}"
+        ARTIFACT_REGISTRY_REPO="${_ARTIFACT_REGISTRY_REPO}"
+        SERVICE_NAME="${_SERVICE_NAME}"
+        SHORT_SHA="${SHORT_SHA}"
+        
+        # Build Docker image with explicit path
+        echo "Executing: docker build -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${SHORT_SHA} -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${VERSION} -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:latest ."
+        docker build \
+          -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${SHORT_SHA} \
+          -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${VERSION} \
+          -t $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:latest \
+          .
 
   # Push Docker image - ONLY on main branch
-  - name: 'maven:3.9-eclipse-temurin-21'
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'push-image'
     entrypoint: 'bash'
     args:
@@ -125,11 +133,18 @@ steps:
 
         echo "Pushing Docker image..."
         cd /workspace
-        chmod +x version.sh
-        VERSION=$$(./version.sh current)
-        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
-        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:$${VERSION}
-        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest
+        VERSION=$$(cat /workspace/.build_version)
+        
+        # Set variables explicitly
+        REGION="${_REGION}"
+        PROJECT_ID="${PROJECT_ID}"
+        ARTIFACT_REGISTRY_REPO="${_ARTIFACT_REGISTRY_REPO}"
+        SERVICE_NAME="${_SERVICE_NAME}"
+        SHORT_SHA="${SHORT_SHA}"
+        
+        docker push $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${SHORT_SHA}
+        docker push $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:$${VERSION}
+        docker push $${REGION}-docker.pkg.dev/$${PROJECT_ID}/$${ARTIFACT_REGISTRY_REPO}/$${SERVICE_NAME}:latest
 
   # Deploy new image to Cloud Run - ONLY on main branch
   # Note: Only updates the image, other config managed by Terraform
@@ -153,7 +168,7 @@ steps:
         echo "Deployment complete ✓"
 
   # Prepare next development version - ONLY on main branch
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'prepare-next-version'
     entrypoint: 'bash'
     args:
@@ -165,15 +180,33 @@ steps:
           exit 0
         fi
 
+        # Prevent infinite build loops: skip if this commit was already a version bump
+        if git log --oneline -1 | grep -q "Bump version"; then
+          echo "This commit was already a version bump, skipping to prevent infinite loop"
+          exit 0
+        fi
+
         echo "Preparing next development version..."
         cd /workspace
         chmod +x version.sh
+
+        # Install git if not available (Maven image may not have it)
+        if ! command -v git &> /dev/null; then
+          echo "Installing git..."
+          apt-get update && apt-get install -y git
+        fi
+
+        # Ensure we're on the main branch and have the latest changes
+        echo "Current branch before checkout: $(git branch --show-current)"
+        git checkout main || git checkout -b main origin/main
+        echo "Current branch after checkout: $(git branch --show-current)"
+        git pull origin main
 
         # Bump to next SNAPSHOT version for continued development
         ./version.sh bump-patch
         ./version.sh add-snapshot
 
-        NEXT_VERSION=$$(./version.sh current)
+        NEXT_VERSION=$$(./version.sh current | sed 's/Current version: //')
         echo "Next development version prepared: $${NEXT_VERSION}"
 
         # Configure git for committing version changes
@@ -183,7 +216,10 @@ steps:
         # Commit the version change back to main
         git add pom.xml
         git commit -m "Bump version to $${NEXT_VERSION} for next development cycle"
-        git push origin main
+        
+        # Push the current branch to origin/main
+        echo "Pushing to origin/main..."
+        git push origin HEAD:main
 
         echo "Version $${NEXT_VERSION} committed to main ✓"
 substitutions:
