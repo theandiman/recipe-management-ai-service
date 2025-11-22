@@ -13,6 +13,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
+  GCP_REGISTRY: europe-west2-docker.pkg.dev
   GITHUB_OWNER: ${{ github.repository_owner }}
   SERVICE_NAME: recipe-ai-service
   REGION: europe-west2
@@ -77,7 +78,7 @@ jobs:
             <server>
               <id>github</id>
               <username>${{ github.actor }}</username>
-              <password>${{ secrets.GITHUB_TOKEN }}</password>
+              <password>${{ secrets.PACKAGES_TOKEN }}</password>
             </server>
           </servers>
         </settings>
@@ -94,9 +95,7 @@ jobs:
 
     - name: Deploy to GitHub Packages
       if: github.ref == 'refs/heads/main'
-      run: mvn deploy -DskipTests
-      env:
-        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: mvn deploy -DskipTests -Dgithub.repository=${{ github.repository }}
 
     - name: Build and push Docker image
       if: github.ref == 'refs/heads/main'
@@ -105,19 +104,30 @@ jobs:
         echo "Tagging image with version: $VERSION"
 
         # Login to GitHub Container Registry
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        echo "${{ secrets.PACKAGES_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+        # Login to GCP Artifact Registry
+        gcloud auth configure-docker $REGION-docker.pkg.dev
 
         # Build Docker image
         docker build \
           -t $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$GITHUB_SHA \
           -t $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$VERSION \
           -t $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:latest \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
           .
 
-        # Push images
+        # Push to GitHub Container Registry
         docker push $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$GITHUB_SHA
         docker push $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$VERSION
         docker push $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:latest
+
+        # Push to GCP Artifact Registry
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest
 
     - name: Authenticate to Google Cloud for deployment
       if: github.ref == 'refs/heads/main'
@@ -130,7 +140,7 @@ jobs:
       if: github.ref == 'refs/heads/main'
       run: |
         gcloud run services update $SERVICE_NAME \
-          --image $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:latest \
+          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
           --region $REGION
 
     - name: Prepare next development version
