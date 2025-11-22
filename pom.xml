@@ -27,11 +27,6 @@
             <id>central</id>
             <url>https://repo1.maven.org/maven2</url>
         </repository>
-        <repository>
-            <id>gcp-maven-proxy</id>
-            <name>GCP Artifact Registry Maven Proxy</name>
-            <url>https://europe-west2-maven.pkg.dev/recipe-mgmt-dev/gh-remote-maven</url>
-        </repository>
     </repositories>
 
     <!-- Short-term dependency overrides to address known CVEs in transitive libraries.
