@@ -1,4 +1,36 @@
 steps:  
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'check-concurrent-builds'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only check for concurrent builds on main branch
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "Feature/PR build detected, skipping concurrent build check"
+          exit 0
+        fi
+
+        echo "Checking for concurrent builds on main branch..."
+
+        # Get current build ID from environment
+        CURRENT_BUILD_ID="${BUILD_ID}"
+
+        # Query for running builds on main branch with the same trigger
+        # Filter by status=PENDING|WORKING and branch=main
+        RUNNING_BUILDS=$(gcloud builds list \
+          --filter="status:(PENDING OR WORKING) AND substitutions.BRANCH_NAME:main AND id!=${CURRENT_BUILD_ID}" \
+          --format="value(id)" \
+          --limit=10)
+
+        if [ -n "$RUNNING_BUILDS" ]; then
+          echo "ERROR: Found concurrent builds running on main branch:"
+          echo "$RUNNING_BUILDS"
+          echo "Failing this build to prevent concurrent deployments."
+          exit 1
+        fi
+
+        echo "No concurrent builds found on main branch ✓"
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'determine-version'
     entrypoint: 'bash'
