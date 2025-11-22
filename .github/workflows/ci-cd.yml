@@ -1,0 +1,166 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Prevent concurrent builds on main branch only
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
+env:
+  REGISTRY: ghcr.io
+  GITHUB_OWNER: ${{ github.repository_owner }}
+  SERVICE_NAME: recipe-ai-service
+  REGION: europe-west2
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Determine version
+      id: version
+      run: |
+        if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "Main branch build detected - bumping patch version for release"
+          # Use version.sh script to bump patch version
+          chmod +x version.sh
+          ./version.sh bump-patch
+          VERSION=$(./version.sh current | sed 's/Current version: //')
+          echo "New release version: $VERSION"
+        else
+          echo "Feature/PR branch build detected - ensuring SNAPSHOT version"
+          # For feature branches, ensure version has SNAPSHOT suffix
+          chmod +x version.sh
+          ./version.sh add-snapshot
+          VERSION=$(./version.sh current | sed 's/Current version: //')
+          echo "Using SNAPSHOT version: $VERSION"
+        fi
+
+        echo "Building with version: $VERSION"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "$VERSION" > .build_version
+
+    - name: Configure Maven for GitHub Packages
+      run: |
+        mkdir -p ~/.m2
+        cat > ~/.m2/settings.xml << EOF
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                      https://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <servers>
+            <server>
+              <id>github</id>
+              <username>${{ github.actor }}</username>
+              <password>${{ secrets.GITHUB_TOKEN }}</password>
+            </server>
+          </servers>
+        </settings>
+        EOF
+
+    - name: Run tests
+      run: mvn test
+
+    - name: Run linting
+      run: mvn verify -DskipTests
+
+    - name: Build application
+      run: mvn package -DskipTests
+
+    - name: Deploy to GitHub Packages
+      if: github.ref == 'refs/heads/main'
+      run: mvn deploy -DskipTests
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
+
+    - name: Build and push Docker image
+      if: github.ref == 'refs/heads/main'
+      run: |
+        VERSION=$(cat .build_version)
+        echo "Tagging image with version: $VERSION"
+
+        # Login to GitHub Container Registry
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+        # Build Docker image
+        docker build \
+          -t $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$GITHUB_SHA \
+          -t $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$VERSION \
+          -t $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:latest \
+          .
+
+        # Push images
+        docker push $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$GITHUB_SHA
+        docker push $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:$VERSION
+        docker push $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:latest
+
+    - name: Authenticate to Google Cloud for deployment
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "${{ secrets.GCP_SA_KEY }}" > /tmp/sa-key.json
+        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Deploy to Cloud Run
+      if: github.ref == 'refs/heads/main'
+      run: |
+        gcloud run services update $SERVICE_NAME \
+          --image $REGISTRY/$GITHUB_OWNER/$SERVICE_NAME:latest \
+          --region $REGION
+
+    - name: Prepare next development version
+      if: github.ref == 'refs/heads/main'
+      run: |
+        # Prevent infinite build loops: skip if this commit was already a version bump
+        if git log --oneline -1 | grep -q "Bump version"; then
+          echo "This commit was already a version bump, skipping to prevent infinite loop"
+          exit 0
+        fi
+
+        echo "Preparing next development version..."
+
+        # Bump to next SNAPSHOT version for continued development
+        chmod +x version.sh
+        ./version.sh bump-patch
+        ./version.sh add-snapshot
+
+        NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
+        echo "Next development version prepared: $NEXT_VERSION"
+
+        # Configure git for committing version changes
+        git config --global user.email "ci@recipe-management.com"
+        git config --global user.name "CI Bot"
+
+        # Commit the version change back to main
+        git add pom.xml
+        git commit -m "Bump version to $NEXT_VERSION for next development cycle"
+
+        # Push the version change
+        git push origin main
+
+        echo "Version $NEXT_VERSION committed to main ✓"
