@@ -1,5 +1,5 @@
 steps:  
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'maven:3.9-eclipse-temurin-21'
     id: 'check-concurrent-builds'
     entrypoint: 'bash'
     args:
