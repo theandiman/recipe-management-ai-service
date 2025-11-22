@@ -180,6 +180,12 @@ steps:
           exit 0
         fi
 
+        # Prevent infinite build loops: skip if this commit was already a version bump
+        if git log --oneline -1 | grep -q "Bump version"; then
+          echo "This commit was already a version bump, skipping to prevent infinite loop"
+          exit 0
+        fi
+
         echo "Preparing next development version..."
         cd /workspace
         chmod +x version.sh
@@ -191,7 +197,9 @@ steps:
         fi
 
         # Ensure we're on the main branch and have the latest changes
-        git checkout main
+        echo "Current branch before checkout: $(git branch --show-current)"
+        git checkout main || git checkout -b main origin/main
+        echo "Current branch after checkout: $(git branch --show-current)"
         git pull origin main
 
         # Bump to next SNAPSHOT version for continued development
@@ -208,7 +216,10 @@ steps:
         # Commit the version change back to main
         git add pom.xml
         git commit -m "Bump version to $${NEXT_VERSION} for next development cycle"
-        git push origin main
+        
+        # Push the current branch to origin/main
+        echo "Pushing to origin/main..."
+        git push origin HEAD:main
 
         echo "Version $${NEXT_VERSION} committed to main ✓"
 substitutions:
