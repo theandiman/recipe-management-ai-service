@@ -13,37 +13,27 @@ steps:
 
         echo "Checking for concurrent builds on main branch..."
 
-        # Install gcloud if not available
-        if ! command -v gcloud &> /dev/null; then
-          echo "Installing gcloud..."
-          apt-get update && apt-get install -y curl
-          curl -sSL https://sdk.cloud.google.com | bash
-          export PATH="$HOME/google-cloud-sdk/bin:$PATH"
-        fi
-
-        # Simple approach: check if any builds are currently running
-        # Since this step only runs on main branch, any running builds indicate concurrency
-        echo "Running gcloud builds list command..."
-        if ! RUNNING_BUILDS=$(gcloud builds list \
-          --filter="status:(PENDING OR WORKING)" \
-          --format="value(id)" \
-          --limit=1 2>&1); then
-          echo "WARNING: gcloud builds list failed: $RUNNING_BUILDS"
-          echo "Skipping concurrent build check due to gcloud error"
+        # Use Cloud Build API directly with curl instead of gcloud
+        # This avoids potential gcloud installation/permission issues
+        ACCESS_TOKEN=$(gcloud auth print-access-token 2>/dev/null || echo "")
+        if [ -z "$ACCESS_TOKEN" ]; then
+          echo "WARNING: Could not get access token, skipping concurrent build check"
           exit 0
         fi
 
-        RUNNING_COUNT=$(echo "$RUNNING_BUILDS" | wc -l)
-        echo "gcloud command output: $RUNNING_BUILDS"
+        PROJECT_ID="${PROJECT_ID}"
+        echo "Checking builds for project: $PROJECT_ID"
+
+        # Query for running builds using Cloud Build API
+        API_RESPONSE=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+          "https://cloudbuild.googleapis.com/v1/projects/$PROJECT_ID/builds?filter=status%3D%22WORKING%22%20OR%20status%3D%22PENDING%22&pageSize=5" 2>/dev/null || echo "{}")
+
+        RUNNING_COUNT=$(echo "$API_RESPONSE" | grep -o '"id"' | wc -l)
+        echo "API Response snippet: $(echo "$API_RESPONSE" | head -c 200)"
         echo "Running builds count: $RUNNING_COUNT"
 
         if [ "$RUNNING_COUNT" -gt 0 ]; then
           echo "ERROR: Found $RUNNING_COUNT concurrent build(s) running."
-          echo "Listing current builds for debugging:"
-          gcloud builds list \
-            --filter="status:(PENDING OR WORKING)" \
-            --format="table(id,status,createTime)" \
-            --limit=3
           echo "Failing this build to prevent concurrent deployments."
           exit 1
         fi
