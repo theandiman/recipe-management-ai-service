@@ -13,6 +13,14 @@ steps:
 
         echo "Checking for concurrent builds on main branch..."
 
+        # Install gcloud if not available
+        if ! command -v gcloud &> /dev/null; then
+          echo "Installing gcloud..."
+          apt-get update && apt-get install -y curl
+          curl -sSL https://sdk.cloud.google.com | bash
+          export PATH="$HOME/google-cloud-sdk/bin:$PATH"
+        fi
+
         # Simple approach: check if any builds are currently running
         # Since this step only runs on main branch, any running builds indicate concurrency
         echo "Running gcloud builds list command..."
