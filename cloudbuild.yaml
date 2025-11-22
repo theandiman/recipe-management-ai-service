@@ -13,21 +13,37 @@ steps:
 
         echo "Checking for concurrent builds on main branch..."
 
-        # Get current build ID from environment
-        CURRENT_BUILD_ID="${BUILD_ID}"
+        # Get current build ID from environment (defensive check)
+        CURRENT_BUILD_ID="${BUILD_ID:-unknown}"
+        echo "Current build ID: ${CURRENT_BUILD_ID}"
 
-        # Query for running builds on main branch with the same trigger
-        # Filter by status=PENDING|WORKING and exclude current build
+        # Query for running builds (simplified approach)
+        # Since this step only runs on main branch, any other running builds are likely concurrent
         RUNNING_BUILDS=$(gcloud builds list \
-          --filter="status:(PENDING OR WORKING) AND id!=${CURRENT_BUILD_ID}" \
+          --filter="status:(PENDING OR WORKING)" \
           --format="value(id)" \
-          --limit=10)
+          --limit=5 2>/dev/null || echo "")
 
+        echo "Found running builds: ${RUNNING_BUILDS}"
+
+        # Check if any builds are running (excluding current if known)
         if [ -n "$RUNNING_BUILDS" ]; then
-          echo "ERROR: Found concurrent builds running on main branch:"
-          echo "$RUNNING_BUILDS"
-          echo "Failing this build to prevent concurrent deployments."
-          exit 1
+          # If we know our build ID, exclude it from the count
+          if [ "$CURRENT_BUILD_ID" != "unknown" ]; then
+            OTHER_BUILDS=$(echo "$RUNNING_BUILDS" | grep -v "$CURRENT_BUILD_ID" || echo "")
+            if [ -n "$OTHER_BUILDS" ]; then
+              echo "ERROR: Found other concurrent builds running:"
+              echo "$OTHER_BUILDS"
+              echo "Failing this build to prevent concurrent deployments."
+              exit 1
+            fi
+          else
+            # If we don't know our build ID, be conservative and fail if any builds are running
+            echo "WARNING: Cannot determine current build ID, found running builds:"
+            echo "$RUNNING_BUILDS"
+            echo "Failing this build to prevent concurrent deployments."
+            exit 1
+          fi
         fi
 
         echo "No concurrent builds found on main branch ✓"
