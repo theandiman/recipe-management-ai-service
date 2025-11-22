@@ -1,47 +1,48 @@
 steps:  
-  # Note: Concurrent build prevention should be configured at the Cloud Build trigger level
-  # in Google Cloud Console under "Trigger Settings" -> "Concurrency control"
-  # Set maximum concurrent builds to 1 for the main branch trigger
-  # - name: 'maven:3.9-eclipse-temurin-21'
-  #   id: 'check-concurrent-builds'
-  #   entrypoint: 'bash'
-  #   args:
-  #     - '-c'
-  #     - |
-  #       # Only check for concurrent builds on main branch
-  #       if [ "$BRANCH_NAME" != "main" ]; then
-  #         echo "Feature/PR build detected, skipping concurrent build check"
-  #         exit 0
-  #       fi
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'check-concurrent-builds'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only check for concurrent builds on main branch
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "Feature/PR build detected, skipping concurrent build check"
+          exit 0
+        fi
 
-  #       echo "Checking for concurrent builds on main branch..."
+        echo "Checking for concurrent builds on main branch using Cloud Storage lock..."
 
-  #       # Use Cloud Build API directly with curl instead of gcloud
-  #       # This avoids potential gcloud installation/permission issues
-  #       ACCESS_TOKEN=$(gcloud auth print-access-token 2>/dev/null || echo "")
-  #       if [ -z "$ACCESS_TOKEN" ]; then
-  #         echo "WARNING: Could not get access token, skipping concurrent build check"
-  #         exit 0
-  #       fi
+        # Use Cloud Storage as a simple lock mechanism
+        LOCK_BUCKET="gs://recipe-management-build-locks"
+        LOCK_FILE="main-branch-build.lock"
+        LOCK_PATH="${LOCK_BUCKET}/${LOCK_FILE}"
 
-  #       PROJECT_ID="${PROJECT_ID}"
-  #       echo "Checking builds for project: $PROJECT_ID"
+        # Ensure the bucket exists (create if it doesn't)
+        if ! gsutil ls -b "$LOCK_BUCKET" >/dev/null 2>&1; then
+          echo "Creating lock bucket: $LOCK_BUCKET"
+          gsutil mb -p "${PROJECT_ID}" -c regional -l "${_REGION}" "$LOCK_BUCKET"
+        fi
 
-  #       # Query for running builds using Cloud Build API
-  #       API_RESPONSE=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
-  #         "https://cloudbuild.googleapis.com/v1/projects/$PROJECT_ID/builds?filter=status%3D%22WORKING%22%20OR%20status%3D%22PENDING%22&pageSize=5" 2>/dev/null || echo "{}")
+        # Check if lock file exists
+        if gsutil -q stat "$LOCK_PATH" 2>/dev/null; then
+          echo "ERROR: Lock file exists at $LOCK_PATH - another build is running on main branch"
+          echo "Failing this build to prevent concurrent deployments."
+          exit 1
+        fi
 
-  #       RUNNING_COUNT=$(echo "$API_RESPONSE" | grep -o '"id"' | wc -l)
-  #       echo "API Response snippet: $(echo "$API_RESPONSE" | head -c 200)"
-  #       echo "Running builds count: $RUNNING_COUNT"
+        # Create lock file with build info
+        echo "Creating lock file..."
+        BUILD_INFO="Build ID: ${BUILD_ID:-unknown}, Started: $(date -u +%Y-%m-%dT%H:%M:%SZ), Branch: $BRANCH_NAME"
+        echo "$BUILD_INFO" | gsutil cp - "$LOCK_PATH"
 
-  #       if [ "$RUNNING_COUNT" -gt 0 ]; then
-  #         echo "ERROR: Found $RUNNING_COUNT concurrent build(s) running."
-  #         echo "Failing this build to prevent concurrent deployments."
-  #         exit 1
-  #       fi
+        # Verify lock was created
+        if ! gsutil -q stat "$LOCK_PATH" 2>/dev/null; then
+          echo "ERROR: Failed to create lock file at $LOCK_PATH"
+          exit 1
+        fi
 
-  #       echo "No concurrent builds found ✓"
+        echo "Lock file created successfully ✓"
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'determine-version'
     entrypoint: 'bash'
@@ -265,6 +266,33 @@ steps:
         git push origin HEAD:main
 
         echo "Version $${NEXT_VERSION} committed to main ✓"
+
+  # Clean up build lock - ONLY on main branch
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'cleanup-build-lock'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Only clean up lock on main branch
+        if [ "$BRANCH_NAME" != "main" ]; then
+          echo "Feature/PR build detected, skipping lock cleanup"
+          exit 0
+        fi
+
+        echo "Cleaning up build lock..."
+
+        # Remove the lock file
+        LOCK_BUCKET="gs://recipe-management-build-locks"
+        LOCK_FILE="main-branch-build.lock"
+        LOCK_PATH="${LOCK_BUCKET}/${LOCK_FILE}"
+
+        if gsutil -q stat "$LOCK_PATH" 2>/dev/null; then
+          gsutil rm "$LOCK_PATH"
+          echo "Lock file removed successfully ✓"
+        else
+          echo "Lock file not found (might have been cleaned up already)"
+        fi
 substitutions:
   _SERVICE_NAME: 'recipe-ai-service'
   _REGION: 'europe-west2'
