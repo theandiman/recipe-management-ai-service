@@ -15,10 +15,19 @@ steps:
 
         # Simple approach: check if any builds are currently running
         # Since this step only runs on main branch, any running builds indicate concurrency
-        RUNNING_COUNT=$(gcloud builds list \
+        echo "Running gcloud builds list command..."
+        if ! RUNNING_BUILDS=$(gcloud builds list \
           --filter="status:(PENDING OR WORKING)" \
           --format="value(id)" \
-          --limit=1 2>/dev/null | wc -l)
+          --limit=1 2>&1); then
+          echo "WARNING: gcloud builds list failed: $RUNNING_BUILDS"
+          echo "Skipping concurrent build check due to gcloud error"
+          exit 0
+        fi
+
+        RUNNING_COUNT=$(echo "$RUNNING_BUILDS" | wc -l)
+        echo "gcloud command output: $RUNNING_BUILDS"
+        echo "Running builds count: $RUNNING_COUNT"
 
         if [ "$RUNNING_COUNT" -gt 0 ]; then
           echo "ERROR: Found $RUNNING_COUNT concurrent build(s) running."
