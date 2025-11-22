@@ -184,6 +184,16 @@ steps:
         cd /workspace
         chmod +x version.sh
 
+        # Install git if not available (Maven image may not have it)
+        if ! command -v git &> /dev/null; then
+          echo "Installing git..."
+          apt-get update && apt-get install -y git
+        fi
+
+        # Ensure we're on the main branch and have the latest changes
+        git checkout main
+        git pull origin main
+
         # Bump to next SNAPSHOT version for continued development
         ./version.sh bump-patch
         ./version.sh add-snapshot
@@ -194,10 +204,6 @@ steps:
         # Configure git for committing version changes
         git config --global user.email "ci@recipe-management.com"
         git config --global user.name "CI Bot"
-
-        # Ensure we're on the main branch and have the latest changes
-        git checkout main
-        git pull origin main
 
         # Commit the version change back to main
         git add pom.xml
