@@ -92,10 +92,6 @@ jobs:
     - name: Build application
       run: mvn package -DskipTests
 
-    - name: Deploy to GitHub Packages
-      if: github.ref == 'refs/heads/main'
-      run: mvn deploy -DskipTests -Dgithub.repository=${{ github.repository }}
-
     - name: Build and push Docker image
       if: github.ref == 'refs/heads/main'
       run: |
