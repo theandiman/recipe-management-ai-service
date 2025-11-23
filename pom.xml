@@ -337,19 +337,6 @@
         </plugins>
     </build>
 
-    <!-- Configure deployment to GitHub Packages -->
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub OWNER Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/${github.repository}</url>
-        </repository>
-        <snapshotRepository>
-            <id>github</id>
-            <name>GitHub OWNER Apache Maven Snapshot Repository</name>
-            <url>https://maven.pkg.github.com/${github.repository}</url>
-        </snapshotRepository>
-    </distributionManagement>
     <!-- Allow skipping SpotBugs on environments where SpotBugs cannot analyze the classfile version (e.g. very new JDKs). -->
     <profiles>
         <profile>
