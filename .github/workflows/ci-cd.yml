@@ -96,6 +96,13 @@ jobs:
       if: github.ref == 'refs/heads/main'
       run: mvn deploy -DskipTests -Dgithub.repository=${{ github.repository }}
 
+    - name: Authenticate to Google Cloud
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "${{ secrets.GCP_SA_KEY }}" > /tmp/sa-key.json
+        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
     - name: Build and push Docker image
       if: github.ref == 'refs/heads/main'
       run: |
@@ -116,13 +123,6 @@ jobs:
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest
-
-    - name: Authenticate to Google Cloud for deployment
-      if: github.ref == 'refs/heads/main'
-      run: |
-        echo "${{ secrets.GCP_SA_KEY }}" > /tmp/sa-key.json
-        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
-        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Deploy to Cloud Run
       if: github.ref == 'refs/heads/main'
