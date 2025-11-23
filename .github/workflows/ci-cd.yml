@@ -45,23 +45,9 @@ jobs:
     - name: Determine version
       id: version
       run: |
-        if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-          echo "Main branch build detected - bumping patch version for release"
-          # Use version.sh script to bump patch version
-          chmod +x version.sh
-          ./version.sh bump-patch
-          VERSION=$(./version.sh current | sed 's/Current version: //')
-          echo "New release version: $VERSION"
-        else
-          echo "Feature/PR branch build detected - ensuring SNAPSHOT version"
-          # For feature branches, ensure version has SNAPSHOT suffix
-          chmod +x version.sh
-          ./version.sh add-snapshot
-          VERSION=$(./version.sh current | sed 's/Current version: //')
-          echo "Using SNAPSHOT version: $VERSION"
-        fi
-
-        echo "Building with version: $VERSION"
+        # Get the current version from pom.xml
+        VERSION=$(./version.sh current | sed 's/Current version: //')
+        echo "Using version: $VERSION"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "$VERSION" > .build_version
 
@@ -126,35 +112,3 @@ jobs:
         gcloud run services update $SERVICE_NAME \
           --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
           --region $REGION
-
-    - name: Prepare next development version
-      if: github.ref == 'refs/heads/main'
-      run: |
-        # Prevent infinite build loops: skip if this commit was already a version bump
-        if git log --oneline -1 | grep -q "Bump version"; then
-          echo "This commit was already a version bump, skipping to prevent infinite loop"
-          exit 0
-        fi
-
-        echo "Preparing next development version..."
-
-        # Bump to next SNAPSHOT version for continued development
-        chmod +x version.sh
-        ./version.sh bump-patch
-        ./version.sh add-snapshot
-
-        NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
-        echo "Next development version prepared: $NEXT_VERSION"
-
-        # Configure git for committing version changes
-        git config --global user.email "ci@recipe-management.com"
-        git config --global user.name "CI Bot"
-
-        # Commit the version change back to main
-        git add pom.xml
-        git commit -m "Bump version to $NEXT_VERSION for next development cycle"
-
-        # Push the version change
-        git push origin main
-
-        echo "Version $NEXT_VERSION committed to main ✓"
