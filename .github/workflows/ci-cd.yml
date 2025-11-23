@@ -110,21 +110,21 @@ jobs:
 
         # Build Docker image
         docker build \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-mgmt-containers/$SERVICE_NAME:$GITHUB_SHA \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-mgmt-containers/$SERVICE_NAME:$VERSION \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-mgmt-containers/$SERVICE_NAME:latest \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION \
+          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
           .
 
         # Push to GCP Artifact Registry
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-mgmt-containers/$SERVICE_NAME:$GITHUB_SHA
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-mgmt-containers/$SERVICE_NAME:$VERSION
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-mgmt-containers/$SERVICE_NAME:latest
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION
+        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest
 
     - name: Deploy to Cloud Run
       if: github.ref == 'refs/heads/main'
       run: |
         gcloud run services update $SERVICE_NAME \
-          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-mgmt-containers/$SERVICE_NAME:latest \
+          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
           --region $REGION
 
     - name: Prepare next development version
