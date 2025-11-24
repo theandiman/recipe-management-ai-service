@@ -152,7 +152,7 @@ jobs:
         git add pom.xml
         git commit -m "Bump version to $NEXT_VERSION for next development cycle"
 
-        # Push the version change
-        git push origin main
+        # Force push the version change (allowed by branch protection settings)
+        git push --force origin main
 
         echo "Version $NEXT_VERSION committed to main ✓"
