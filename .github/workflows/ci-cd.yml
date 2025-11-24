@@ -118,12 +118,19 @@ jobs:
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest
 
-    - name: Deploy to Cloud Run
+    - name: Set up GitHub CLI
       if: github.ref == 'refs/heads/main'
       run: |
-        gcloud run services update $SERVICE_NAME \
-          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
-          --region $REGION
+        # Install GitHub CLI if not available
+        if ! command -v gh &> /dev/null; then
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+        fi
+
+        # Authenticate GitHub CLI
+        echo "${{ secrets.GIT_PAT }}" | gh auth login --with-token
 
     - name: Prepare next development version
       if: github.ref == 'refs/heads/main'
@@ -144,15 +151,27 @@ jobs:
         NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
         echo "Next development version prepared: $NEXT_VERSION"
 
+        # Create a new branch for the version bump
+        BRANCH_NAME="version-bump-$(date +%Y%m%d-%H%M%S)"
+        git checkout -b $BRANCH_NAME
+
         # Configure git for committing version changes
         git config --global user.email "ci@recipe-management.com"
         git config --global user.name "CI Bot"
 
-        # Commit the version change back to main
+        # Commit the version change
         git add pom.xml
         git commit -m "Bump version to $NEXT_VERSION for next development cycle"
 
-        # Push the version change
-        git push origin main
+        # Push the version change to a new branch
+        git push origin $BRANCH_NAME
 
-        echo "Version $NEXT_VERSION committed to main ✓"
+        # Create a pull request using GitHub CLI
+        gh pr create \
+          --title "Version bump to $NEXT_VERSION" \
+          --body "Automated version bump after successful deployment. This PR bumps the version to $NEXT_VERSION for continued development." \
+          --base main \
+          --head $BRANCH_NAME \
+          --label "automated,version-bump"
+
+        echo "Version bump PR created for $NEXT_VERSION ✓"
