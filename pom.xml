@@ -12,7 +12,7 @@
 
     <groupId>com.recipe.ai</groupId>
     <artifactId>recipe-generator-service</artifactId>
-    <version>${revision}</version>
+    <version>1.0.2-SNAPSHOT</version>
     <name>recipe-generator-service</name>
     <description>Microservice for AI recipe generation using Gemini API</description>
 
@@ -20,6 +20,7 @@
         <java.version>21</java.version>
         <netty.version>4.2.7.Final</netty.version>
         <revision>1.0.0-SNAPSHOT</revision>
+        <github.repository>${env.GITHUB_REPOSITORY}</github.repository>
     </properties>
          
     <repositories>
@@ -28,9 +29,9 @@
             <url>https://repo1.maven.org/maven2</url>
         </repository>
         <repository>
-            <id>gcp-maven-proxy</id>
-            <name>GCP Artifact Registry Maven Proxy</name>
-            <url>https://europe-west2-maven.pkg.dev/recipe-mgmt-dev/gh-remote-maven</url>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/theandiman/recipe-management-shared</url>
         </repository>
     </repositories>
 
@@ -189,7 +190,7 @@
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
-            <version>9.4.0</version>
+            <version>9.7.0</version>
         </dependency>
 
         <!-- Spring Security for securing REST endpoints -->
@@ -336,19 +337,6 @@
         </plugins>
     </build>
 
-    <!-- Configure deployment to GitHub Packages -->
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub OWNER Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/theandiman/recipe-generato-stack-a</url>
-        </repository>
-        <snapshotRepository>
-            <id>github</id>
-            <name>GitHub OWNER Apache Maven Snapshot Repository</name>
-            <url>https://maven.pkg.github.com/theandiman/recipe-generato-stack-a</url>
-        </snapshotRepository>
-    </distributionManagement>
     <!-- Allow skipping SpotBugs on environments where SpotBugs cannot analyze the classfile version (e.g. very new JDKs). -->
     <profiles>
         <profile>
