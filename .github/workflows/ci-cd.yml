@@ -121,8 +121,9 @@ jobs:
     - name: Deploy to Cloud Run
       if: github.ref == 'refs/heads/main'
       run: |
+        VERSION=$(cat .build_version)
         gcloud run services update $SERVICE_NAME \
-          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
+          --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION \
           --region $REGION
 
     - name: Prepare next development version
