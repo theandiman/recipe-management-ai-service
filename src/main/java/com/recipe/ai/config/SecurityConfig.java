@@ -22,18 +22,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
-@ConditionalOnProperty(
-    name = "auth.enabled",
-    havingValue = "true",
-    matchIfMissing = true
-)
+@ConditionalOnProperty(name = "auth.enabled", havingValue = "true", matchIfMissing = true)
 public class SecurityConfig {
 
     private final FirebaseAuthenticationFilter firebaseAuthenticationFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
 
     public SecurityConfig(FirebaseAuthenticationFilter firebaseAuthenticationFilter,
-                         ApiKeyAuthenticationFilter apiKeyAuthenticationFilter) {
+            ApiKeyAuthenticationFilter apiKeyAuthenticationFilter) {
         this.firebaseAuthenticationFilter = firebaseAuthenticationFilter;
         this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
     }
@@ -43,29 +39,30 @@ public class SecurityConfig {
         http
                 // Disable CSRF for stateless API (we use bearer tokens)
                 .csrf(csrf -> csrf.disable())
-                
+
                 // Stateless session management (no server-side sessions)
-                .sessionManagement(session -> 
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 // Configure authorization rules
                 .authorizeHttpRequests(authz -> authz
                         // Allow health checks without authentication (for load balancers)
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                        
+
                         // Allow OPTIONS requests for CORS preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        
+
+                        // Allow Swagger UI and API docs
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
                         // Require authentication for all API endpoints
                         .requestMatchers("/api/**").authenticated()
-                        
+
                         // Deny all other requests
-                        .anyRequest().denyAll()
-                )
-                
+                        .anyRequest().denyAll())
+
                 // Add Firebase authentication filter before Spring Security's default filter
                 .addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                
+
                 // Add API key filter after Firebase filter (Firebase takes precedence)
                 .addFilterAfter(apiKeyAuthenticationFilter, FirebaseAuthenticationFilter.class);
 
