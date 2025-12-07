@@ -63,7 +63,7 @@ Key configuration in `src/main/resources/application.properties`:
 
 ## API Endpoints
 
-📘 **[Is API Documentation](https://theandiman.github.io/recipe-management-ai-service/)** - View the interactive Swagger UI for full API details.
+📘 **[API Documentation](https://theandiman.github.io/recipe-management-ai-service/)** - View the interactive Swagger UI for full API details.
 
 ### Generate Recipe
 
