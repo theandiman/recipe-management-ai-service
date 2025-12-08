@@ -62,7 +62,7 @@
             <dependency>
                 <groupId>org.apache.tomcat.embed</groupId>
                 <artifactId>tomcat-embed-core</artifactId>
-                <version>10.1.47</version>
+                <version>11.0.15</version>
             </dependency>
             <!-- Also pin catalina coordinates to match the patched series -->
             <dependency>
