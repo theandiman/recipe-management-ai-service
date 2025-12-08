@@ -68,7 +68,7 @@
             <dependency>
                 <groupId>org.apache.tomcat</groupId>
                 <artifactId>tomcat-catalina</artifactId>
-                <version>11.0.13</version>
+                <version>11.0.15</version>
             </dependency>
             <!-- Pin Netty to a patched release to remediate CVEs affecting older 4.1.x releases. -->
             <dependency>
