@@ -16,13 +16,13 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = "auth.enabled=false")
-public class OpenApiGeneratorTest {
+class OpenApiGeneratorTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
-    public void generateOpenApiJson() throws Exception {
+    void generateOpenApiJson() throws Exception {
         String openApiJson = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andReturn()
