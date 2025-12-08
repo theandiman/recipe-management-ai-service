@@ -11,7 +11,7 @@
     {
       "description": "Automerge patch and minor updates for production dependencies",
       "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
-      "excludeDepTypes": ["devDependencies"],
+      "matchDepTypes": ["dependencies"],
       "automerge": true,
       "automergeStrategy": "squash",
       "platformAutomerge": true
@@ -32,7 +32,7 @@
   ],
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
-  "stabilityDays": 3,
+  "minimumReleaseAge": "3 days",
   "separateMinorPatch": true,
   "labels": ["dependencies", "renovate"]
 }
