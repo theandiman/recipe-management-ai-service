@@ -24,10 +24,11 @@
     {
       "description": "Automerge development dependencies with less strict requirements",
       "matchDepTypes": ["devDependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchUpdateTypes": ["patch", "minor"],
       "automerge": true,
       "automergeType": "pr",
-      "automergeStrategy": "squash"
+      "automergeStrategy": "squash",
+      "platformAutomerge": true
     }
   ],
   "prConcurrentLimit": 5,
