@@ -200,6 +200,22 @@ Version bumps are handled automatically by GitHub Actions and are compatible wit
 - ✅ Linear history
 - ✅ No force pushes
 
+### Dependency Management
+
+The project uses [Renovate](https://docs.renovatebot.com/) for automated dependency updates with the following configuration:
+
+- **Automerge**: Enabled for patch and minor updates
+- **Major Updates**: Require manual review and approval
+- **Schedule**: Updates run before 3am on Mondays
+- **Stability Days**: 3-day waiting period before automerging to ensure package stability
+- **PR Limits**: Maximum 5 concurrent PRs, 2 per hour
+
+Configuration details in `renovate.json`:
+- Patch/minor updates are automatically merged when CI passes
+- Major updates create PRs that require manual review
+- Development dependencies have relaxed automerge rules
+- All PRs are labeled with `dependencies` and `renovate`
+
 ### Required GitHub Secrets
 
 Set these in repository Settings → Secrets and variables → Actions:
