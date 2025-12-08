@@ -293,7 +293,7 @@
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
                 <!-- upgrade to a published release that supports newer JDKs -->
-                <version>4.4.2</version>
+                <version>4.9.8.2</version>
                 <configuration>
                     <!-- Allow skipping SpotBugs via property. CI can set -Dspotbugs.skip=false explicitly. -->
                     <skip>${spotbugs.skip}</skip>
