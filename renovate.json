@@ -9,8 +9,9 @@
   ],
   "packageRules": [
     {
-      "description": "Automerge patch and minor updates for non-major dependencies",
+      "description": "Automerge patch and minor updates for production dependencies",
       "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
+      "excludeDepTypes": ["devDependencies"],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash",
@@ -24,7 +25,7 @@
     {
       "description": "Automerge development dependencies with less strict requirements",
       "matchDepTypes": ["devDependencies"],
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash",
