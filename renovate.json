@@ -13,7 +13,6 @@
       "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
       "excludeDepTypes": ["devDependencies"],
       "automerge": true,
-      "automergeType": "pr",
       "automergeStrategy": "squash",
       "platformAutomerge": true
     },
@@ -27,7 +26,6 @@
       "matchDepTypes": ["devDependencies"],
       "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
       "automerge": true,
-      "automergeType": "pr",
       "automergeStrategy": "squash",
       "platformAutomerge": true
     }
