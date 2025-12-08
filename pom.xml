@@ -162,7 +162,7 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>8.1</version>
+            <version>9.0</version>
         </dependency>
 
         <!-- Add WebClient for making non-blocking HTTP calls to the Gemini API -->
