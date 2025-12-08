@@ -3,5 +3,38 @@
   "extends": [
     "config:recommended",
     ":dependencyDashboard"
-  ]
+  ],
+  "schedule": [
+    "before 3am on Monday"
+  ],
+  "packageRules": [
+    {
+      "description": "Automerge patch and minor updates for production dependencies",
+      "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
+      "excludeDepTypes": ["devDependencies"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Require manual approval for major updates",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Automerge development dependencies with less strict requirements",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "platformAutomerge": true
+    }
+  ],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "stabilityDays": 3,
+  "separateMinorPatch": true,
+  "labels": ["dependencies", "renovate"]
 }
