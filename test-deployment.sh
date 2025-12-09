@@ -121,7 +121,7 @@ echo -e "Tests Passed: ${GREEN}$TESTS_PASSED${NC}"
 echo -e "Tests Failed: ${RED}$TESTS_FAILED${NC}"
 echo ""
 
-if [ $TESTS_FAILED -eq 0 ]; then
+if [ "$TESTS_FAILED" -eq 0 ]; then
     echo -e "${GREEN}✓ All tests passed!${NC}"
     exit 0
 else
