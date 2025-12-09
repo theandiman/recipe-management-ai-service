@@ -26,7 +26,6 @@ jobs:
       contents: read
       actions: write  # For uploading artifacts
     outputs:
-      version: ${{ steps.version.outputs.version }}
 
     steps:
     - name: Checkout code
