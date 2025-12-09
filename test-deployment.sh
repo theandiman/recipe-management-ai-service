@@ -52,7 +52,7 @@ test_endpoint_with_response() {
 
     # Make request and capture both status code and response
     tmpfile=$(mktemp)
-    status_code=$(curl -s -o "$tmpfile" -w "%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
+    status_code=$(curl -s -o "$tmpfile" -w "%{http_code}" --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
     body=$(cat "$tmpfile")
     rm -f "$tmpfile"
 
