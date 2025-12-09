@@ -294,9 +294,6 @@ jobs:
         # Make version.sh executable
         chmod +x version.sh
         
-        # First, remove SNAPSHOT suffix if present
-        ./version.sh remove-snapshot || true
-        
         # Then bump patch version for next development cycle
         ./version.sh bump-patch
         
