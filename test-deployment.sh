@@ -88,7 +88,7 @@ test_endpoint_with_response "/actuator/health" "200" "Health endpoint" "true" ||
 
 # Test 2: Swagger UI endpoint (follows redirects)
 echo -n "Testing: Swagger UI endpoint... "
-status_code=$(curl -s -o /dev/null -w "%{http_code}" -L --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL/swagger-ui.html")
+status_code=$(curl -s -o /dev/null -w "%{http_code}" -L --connect-timeout 5 --max-time 10 "$SERVICE_URL/swagger-ui.html")
 if [ "$status_code" = "200" ]; then
     echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code after redirect)"
     ((TESTS_PASSED++))
