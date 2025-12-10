@@ -27,10 +27,6 @@ fi
 # Get service URL from command line or use default
 SERVICE_URL="${1:-http://localhost:8080}"
 
-if [ -z "$SERVICE_URL" ]; then
-    echo -e "${RED}Error: SERVICE_URL is empty${NC}"
-    exit 1
-fi
 echo "=========================================="
 echo "Post-Deployment Testing"
 echo "=========================================="
