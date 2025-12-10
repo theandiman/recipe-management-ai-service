@@ -7,7 +7,7 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Prevent concurrent builds on main branch only
+# Cancel in-progress builds for non-main branches (allow concurrent builds only on main)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -25,8 +25,6 @@ jobs:
     permissions:
       contents: read
       actions: write  # For uploading artifacts
-    outputs:
-      version: ${{ steps.version.outputs.version }}
 
     steps:
     - name: Checkout code
@@ -123,7 +121,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       # Required for Dockerfile and source context during docker build
 
     - name: Download build artifacts
@@ -202,12 +200,6 @@ jobs:
       actions: write  # For uploading artifacts
 
     steps:
-    - name: Authenticate to Google Cloud
-      run: |
-        echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
-        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
-        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
-
     - name: Run OWASP ZAP scan
       run: |
         SERVICE_URL="${{ needs.deploy.outputs.service-url }}"
@@ -216,7 +208,7 @@ jobs:
         
         # Create reports directory with proper permissions
         mkdir -p zap-reports
-        chmod 777 zap-reports
+        chmod 775 zap-reports
         
         # Run ZAP baseline scan
         # Exit code 0: Success, 1: At least 1 FAIL, 2: At least 1 WARN and no FAILs, 3: Any other failure
@@ -241,7 +233,7 @@ jobs:
         fi
 
     - name: Upload ZAP Reports as Artifacts
-      if: github.ref == 'refs/heads/main' && hashFiles('zap-reports/zap-report.html') != ''
+      if: hashFiles('zap-reports/zap-report.html') != ''
       uses: actions/upload-artifact@v4
       with:
         name: zap-security-reports
@@ -259,7 +251,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Run post-deployment tests
       run: |
@@ -283,7 +275,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 2
         token: ${{ secrets.GIT_PAT }}
@@ -300,9 +292,6 @@ jobs:
 
         # Make version.sh executable
         chmod +x version.sh
-        
-        # First, remove SNAPSHOT suffix if present
-        ./version.sh remove-snapshot || true
         
         # Then bump patch version for next development cycle
         ./version.sh bump-patch

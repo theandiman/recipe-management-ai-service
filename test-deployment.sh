@@ -27,10 +27,6 @@ fi
 # Get service URL from command line or use default
 SERVICE_URL="${1:-http://localhost:8080}"
 
-if [ -z "$SERVICE_URL" ]; then
-    echo -e "${RED}Error: SERVICE_URL is empty${NC}"
-    exit 1
-fi
 echo "=========================================="
 echo "Post-Deployment Testing"
 echo "=========================================="
@@ -52,7 +48,7 @@ test_endpoint_with_response() {
 
     # Make request and capture both status code and response
     tmpfile=$(mktemp)
-    status_code=$(curl -s -o "$tmpfile" -w "%{http_code}" --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
+    status_code=$(curl -s -o "$tmpfile" -w "%{http_code}" --connect-timeout 5 --max-time 10 "$SERVICE_URL$endpoint")
     body=$(cat "$tmpfile")
     rm -f "$tmpfile"
 
@@ -88,7 +84,7 @@ test_endpoint_with_response "/actuator/health" "200" "Health endpoint" "true" ||
 
 # Test 2: Swagger UI endpoint (follows redirects)
 echo -n "Testing: Swagger UI endpoint... "
-status_code=$(curl -s -o /dev/null -w "%{http_code}" -L --fail-with-body --connect-timeout 5 --max-time 10 "$SERVICE_URL/swagger-ui.html")
+status_code=$(curl -s -o /dev/null -w "%{http_code}" -L --connect-timeout 5 --max-time 10 "$SERVICE_URL/swagger-ui.html")
 if [ "$status_code" = "200" ]; then
     echo -e "${GREEN}✓ PASSED${NC} (HTTP $status_code after redirect)"
     ((TESTS_PASSED++))
@@ -121,7 +117,7 @@ echo -e "Tests Passed: ${GREEN}$TESTS_PASSED${NC}"
 echo -e "Tests Failed: ${RED}$TESTS_FAILED${NC}"
 echo ""
 
-if [ $TESTS_FAILED -eq 0 ]; then
+if [ "$TESTS_FAILED" -eq 0 ]; then
     echo -e "${GREEN}✓ All tests passed!${NC}"
     exit 0
 else
