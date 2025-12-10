@@ -37,22 +37,21 @@
         </encoder>
     </appender>
 
+    <!-- Common logger configurations for all profiles -->
+    <logger name="com.recipemanagement" level="DEBUG"/>
+    <logger name="org.springframework.web" level="DEBUG"/>
+    <logger name="org.springframework.web.reactive.function.client" level="DEBUG"/>
+
     <!-- Use human-readable logging locally, JSON in production -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE" />
         </root>
-        <logger name="com.recipemanagement" level="DEBUG"/>
-        <logger name="org.springframework.web" level="DEBUG"/>
-        <logger name="org.springframework.web.reactive.function.client" level="DEBUG"/>
     </springProfile>
 
     <springProfile name="!local">
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE" />
         </root>
-        <logger name="com.recipemanagement" level="DEBUG"/>
-        <logger name="org.springframework.web" level="DEBUG"/>
-        <logger name="org.springframework.web.reactive.function.client" level="DEBUG"/>
     </springProfile>
 </configuration>
