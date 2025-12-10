@@ -3,7 +3,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     
     <springProperty scope="context" name="serviceName" source="otel.service.name" defaultValue="recipe-ai-service"/>
-    <springProperty scope="context" name="serviceVersion" source="spring.application.version" defaultValue="unknown"/>
+    <springProperty scope="context" name="serviceVersion" source="otel.service.version" defaultValue="unknown"/>
     
     <!-- JSON appender for structured logging -->
     <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
