@@ -209,7 +209,7 @@ jobs:
         
         # Create reports directory with proper permissions
         mkdir -p zap-reports
-        chmod 777 zap-reports
+        chmod 775 zap-reports
         
         # Run ZAP baseline scan
         # Exit code 0: Success, 1: At least 1 FAIL, 2: At least 1 WARN and no FAILs, 3: Any other failure
