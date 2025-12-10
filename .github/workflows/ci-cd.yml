@@ -25,7 +25,6 @@ jobs:
     permissions:
       contents: read
       actions: write  # For uploading artifacts
-    outputs:
 
     steps:
     - name: Checkout code
