@@ -38,7 +38,7 @@
     </appender>
 
     <!-- Common logger configurations for all profiles -->
-    <logger name="com.recipemanagement" level="DEBUG"/>
+    <logger name="com.recipe.ai" level="DEBUG"/>
     <logger name="org.springframework.web" level="DEBUG"/>
     <logger name="org.springframework.web.reactive.function.client" level="DEBUG"/>
 
