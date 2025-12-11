@@ -178,13 +178,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Spring Boot Web Test (includes MockMvc for Spring Boot 4.x) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Use OkHttp MockWebServer for lightweight HTTP stubbing in integration tests -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
