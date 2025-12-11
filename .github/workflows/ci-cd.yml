@@ -101,7 +101,7 @@ jobs:
 
     - name: Upload build artifacts
       if: github.ref == 'refs/heads/main'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: build-artifacts
         path: |
@@ -125,7 +125,7 @@ jobs:
       # Required for Dockerfile and source context during docker build
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v4.1.3
+      uses: actions/download-artifact@v6.0.0
       with:
         name: build-artifacts
         path: .
@@ -166,7 +166,7 @@ jobs:
 
     steps:
     - name: Download build artifacts
-      uses: actions/download-artifact@v4.1.3
+      uses: actions/download-artifact@v6.0.0
       with:
         name: build-artifacts
         path: .
@@ -234,7 +234,7 @@ jobs:
 
     - name: Upload ZAP Reports as Artifacts
       if: hashFiles('zap-reports/zap-report.html') != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: zap-security-reports
         path: zap-reports/zap-report.*
