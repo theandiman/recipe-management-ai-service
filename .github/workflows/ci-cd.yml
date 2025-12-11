@@ -5,11 +5,12 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
-# Prevent concurrent builds on main branch only
+# Cancel in-progress builds for non-main branches (allow concurrent builds only on main)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   GCP_REGISTRY: europe-west2-docker.pkg.dev
@@ -18,14 +19,18 @@ env:
   REGION: europe-west2
 
 jobs:
-  build-and-deploy:
+  build:
+    name: Build and Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # For uploading artifacts
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
       with:
-        fetch-depth: 0
+        fetch-depth: 2
         token: ${{ secrets.GIT_PAT }}
 
     - name: Set up JDK 21
@@ -62,6 +67,10 @@ jobs:
         echo "Building with version: $VERSION"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "$VERSION" > .build_version
+        
+        # Debug: verify file was created
+        ls -la .build_version
+        cat .build_version
 
     - name: Configure Maven for GitHub Packages
       run: |
@@ -90,15 +99,44 @@ jobs:
     - name: Build application
       run: mvn package -DskipTests
 
-    - name: Authenticate to Google Cloud
+    - name: Upload build artifacts
       if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          target/*.jar
+          .build_version
+        retention-days: 1
+        include-hidden-files: true
+
+  docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read  # For downloading artifacts
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      # Required for Dockerfile and source context during docker build
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4.1.3
+      with:
+        name: build-artifacts
+        path: .
+
+    - name: Authenticate to Google Cloud
       run: |
         echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
         gcloud auth activate-service-account --key-file=/tmp/sa-key.json
         gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Build and push Docker image
-      if: github.ref == 'refs/heads/main'
       run: |
         VERSION=$(cat .build_version)
         echo "Tagging image with version: $VERSION"
@@ -110,36 +148,155 @@ jobs:
         docker build \
           -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA \
           -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest \
           .
 
         # Push to GCP Artifact Registry
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:latest
+
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      actions: read  # For downloading artifacts
+    outputs:
+      service-url: ${{ steps.deploy.outputs.service-url }}
+
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4.1.3
+      with:
+        name: build-artifacts
+        path: .
+
+    - name: Authenticate to Google Cloud
+      run: |
+        echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/sa-key.json
+        gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Deploy to Cloud Run
-      if: github.ref == 'refs/heads/main'
+      id: deploy
       run: |
         VERSION=$(cat .build_version)
         gcloud run services update $SERVICE_NAME \
           --image $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION \
           --region $REGION
 
+        # Get the service URL for security scanning
+        SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+          --region $REGION \
+          --format='value(status.url)')
+        echo "service-url=$SERVICE_URL" >> $GITHUB_OUTPUT
+
+  security-scan:
+    name: OWASP ZAP Security Scan
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      actions: write  # For uploading artifacts
+
+    steps:
+    - name: Run OWASP ZAP scan
+      run: |
+        SERVICE_URL="${{ needs.deploy.outputs.service-url }}"
+        
+        echo "Running OWASP ZAP baseline scan against $SERVICE_URL"
+        
+        # Create reports directory with proper permissions
+        mkdir -p zap-reports
+        chmod 775 zap-reports
+        
+        # Run ZAP baseline scan
+        # Exit code 0: Success, 1: At least 1 FAIL, 2: At least 1 WARN and no FAILs, 3: Any other failure
+        # We use '|| true' to prevent workflow failure on warnings/failures
+        docker run --rm \
+          -v $(pwd)/zap-reports:/zap/wrk:rw \
+          ghcr.io/zaproxy/zaproxy:stable \
+          zap-baseline.py \
+          -t "$SERVICE_URL" \
+          -m 5 \
+          -r zap-report.html \
+          -w zap-report.md \
+          -J zap-report.json || true
+        
+        # Check if reports were generated
+        if [ -f "zap-reports/zap-report.html" ]; then
+          echo "✓ ZAP scan complete - reports generated successfully"
+          ls -lh zap-reports/
+        else
+          echo "⚠ Warning: ZAP reports were not generated"
+          echo "Check ZAP container output above for errors"
+        fi
+
+    - name: Upload ZAP Reports as Artifacts
+      if: hashFiles('zap-reports/zap-report.html') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-security-reports
+        path: zap-reports/zap-report.*
+        retention-days: 30
+
+  post-deployment-test:
+    name: Post-Deployment Testing
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Run post-deployment tests
+      run: |
+        SERVICE_URL="${{ needs.deploy.outputs.service-url }}"
+
+        echo "Running post-deployment tests against $SERVICE_URL"
+
+        # Make test script executable
+        chmod +x test-deployment.sh
+
+        # Run the tests
+        ./test-deployment.sh "$SERVICE_URL"
+
+  version-bump:
+    name: Prepare Next Development Version
+    runs-on: ubuntu-latest
+    needs: [security-scan, post-deployment-test]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write  # For committing and pushing version changes
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 2
+        token: ${{ secrets.GIT_PAT }}
+
     - name: Prepare next development version
-      if: github.ref == 'refs/heads/main'
       run: |
         # Prevent infinite build loops: skip if this commit was already a version bump
-        if git log --oneline -1 | grep -q "Bump version"; then
-          echo "This commit was already a version bump, skipping to prevent infinite loop"
+        if git log -1 --pretty=format:'%an' | grep -q "CI Bot"; then
+          echo "This commit was already a version bump by CI Bot, skipping to prevent infinite loop"
           exit 0
         fi
 
         echo "Preparing next development version..."
 
-        # Bump to next SNAPSHOT version for continued development
+        # Make version.sh executable
         chmod +x version.sh
+        
+        # Then bump patch version for next development cycle
         ./version.sh bump-patch
+        
+        # Finally, add SNAPSHOT suffix for development
         ./version.sh add-snapshot
 
         NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
@@ -153,7 +310,7 @@ jobs:
         git add pom.xml
         git commit -m "Bump version to $NEXT_VERSION for next development cycle"
 
-        # Force push the version change (allowed by branch protection settings)
-        git push --force origin main
+        # Push the version change
+        git push origin main
 
         echo "Version $NEXT_VERSION committed to main ✓"
