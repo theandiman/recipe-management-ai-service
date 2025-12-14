@@ -217,7 +217,7 @@
             <groupId>com.recipe</groupId>
             <artifactId>recipe-management-shared</artifactId>
             <!-- Bumped to the published shared library release -->
-            <version>1.0.18</version>
+            <version>1.0.19</version>
         </dependency>
 
         <!-- Explicitly pin xmlunit-core for test scope to address Dependabot alert CVE-2024-31573 -->
