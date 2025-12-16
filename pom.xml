@@ -18,7 +18,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <netty.version>4.2.8.Final</netty.version>
+        <netty.version>4.2.9.Final</netty.version>
         <revision>1.0.0-SNAPSHOT</revision>
         <github.repository>${env.GITHUB_REPOSITORY}</github.repository>
     </properties>
