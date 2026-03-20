@@ -127,7 +127,7 @@ This project uses semantic versioning (MAJOR.MINOR.PATCH) with automated version
 
 - **Main Branch**: Releases are automatically versioned and tagged (e.g., `v1.0.0`, `v1.0.1`)
 - **Feature Branches**: Use SNAPSHOT versions for development (e.g., `1.0.1-SNAPSHOT`)
-- **Version Bumping**: Patch versions are automatically incremented on successful main branch deployments
+- **Image Tagging**: Deployments are tagged using GitHub short SHA (e.g. `a1b2c3d`)
 
 ### Manual Version Management
 
@@ -146,37 +146,15 @@ mvn versions:set -DnewVersion=1.0.1-SNAPSHOT    # Add SNAPSHOT
 mvn versions:set -DnewVersion=1.0.1             # Remove SNAPSHOT
 ```
 
-### Version Script
-
-A convenience script is also provided for common version operations:
-
-```bash
-# Show current version
-./version.sh current
-
-# Bump versions
-./version.sh bump-patch    # 1.0.0 -> 1.0.1
-./version.sh bump-minor    # 1.0.0 -> 1.1.0
-./version.sh bump-major    # 1.0.0 -> 2.0.0
-
-# Set specific version
-./version.sh set-version 2.1.3
-
-# Manage SNAPSHOT versions
-./version.sh add-snapshot      # Add SNAPSHOT suffix
-./version.sh remove-snapshot   # Remove SNAPSHOT suffix
-```
-
 ### CI/CD Versioning Process
 
-The service uses GitHub Actions for CI/CD with automatic versioning:
+The service uses GitHub Actions for CI/CD with SHA-based image tagging:
 
-1. **Feature Branches/PRs**: Build with `SNAPSHOT` version for testing
-2. **Main Branch Merges**:
-   - Determine next version by incrementing patch number from latest git tag
-   - Build and deploy with release version (e.g., `1.0.1`)
-   - Update `pom.xml` to next SNAPSHOT version (e.g., `1.0.2-SNAPSHOT`)
-   - Push version changes back to main
+1. **Build**: CI derives `VERSION` from `${GITHUB_SHA::7}`
+2. **Docker**: Image is built/pushed as `.../$SERVICE_NAME:$VERSION`
+3. **Deploy**: Cloud Run is updated to the same SHA tag
+
+This keeps deploy versions immutable and traceable to a specific commit.
 
 ### Concurrency Control
 
@@ -188,13 +166,13 @@ concurrency:
 ```
 
 This ensures only one build runs on main at a time, preventing:
-- Race conditions in version bumping
+- Deployment races on the same service
 - Concurrent deployments
 - Artifact conflicts
 
 ### Branch Protection
 
-Version bumps are handled automatically by GitHub Actions and are compatible with branch protection rules that require:
+SHA-tagged deployments are handled automatically by GitHub Actions and are compatible with branch protection rules that require:
 - ✅ Pull request reviews
 - ✅ Status checks (tests, linting, security scans)
 - ✅ Linear history

@@ -186,7 +186,7 @@ export HONEYCOMB_API_KEY=your_honeycomb_key
 
 ### Feature Development
 1. Create feature branch from `main`
-2. Use SNAPSHOT versions (e.g., `1.0.1-SNAPSHOT`)
+2. Keep `pom.xml` version stable unless intentionally releasing
 3. Write tests for new functionality
 4. Run code quality checks (`mvn checkstyle:check`)
 5. Ensure all tests pass (`mvn test`)
@@ -194,17 +194,16 @@ export HONEYCOMB_API_KEY=your_honeycomb_key
 
 ### Version Management
 - Semantic versioning: `MAJOR.MINOR.PATCH`
-- Main branch uses release versions (e.g., `1.0.1`)
-- Feature branches use SNAPSHOT versions
-- Version bumping is automated in CI/CD
-- Use `./version.sh` for manual version operations
+- Container deploy versions use GitHub short SHA tags
+- CI derives deploy tag from `${GITHUB_SHA::7}`
+- Avoid CI-driven commits that only bump versions
 
 ### CI/CD Pipeline
 - Automated builds on all branches
 - Checkstyle and SpotBugs run on CI
 - Tests must pass before merge
 - Main branch deploys to Google Cloud Run
-- Automatic version tagging on successful deploys
+- Automatic short-SHA image tagging on successful deploys
 
 ## Common Pitfalls to Avoid
 

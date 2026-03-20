@@ -50,27 +50,10 @@ jobs:
     - name: Determine version
       id: version
       run: |
-        if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-          echo "Main branch build detected - bumping patch version for release"
-          # Use version.sh script to bump patch version
-          chmod +x version.sh
-          ./version.sh bump-patch
-          VERSION=$(./version.sh current | sed 's/Current version: //')
-          echo "New release version: $VERSION"
-        else
-          echo "Feature/PR branch build detected - using current version"
-          # For feature branches, use current version
-          VERSION=$(./version.sh current | sed 's/Current version: //')
-          echo "Using version: $VERSION"
-        fi
-
+        VERSION="${GITHUB_SHA::7}"
         echo "Building with version: $VERSION"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "$VERSION" > .build_version
-        
-        # Debug: verify file was created
-        ls -la .build_version
-        cat .build_version
 
     - name: Configure Maven for GitHub Packages
       run: |
@@ -146,12 +129,10 @@ jobs:
 
         # Build Docker image
         docker build \
-          -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA \
           -t $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION \
           .
 
         # Push to GCP Artifact Registry
-        docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$GITHUB_SHA
         docker push $GCP_REGISTRY/${{ secrets.GCP_PROJECT_ID }}/recipe-ai/$SERVICE_NAME:$VERSION
 
   deploy:
@@ -265,52 +246,3 @@ jobs:
         # Run the tests
         ./test-deployment.sh "$SERVICE_URL"
 
-  version-bump:
-    name: Prepare Next Development Version
-    runs-on: ubuntu-latest
-    needs: [security-scan, post-deployment-test]
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: write  # For committing and pushing version changes
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 2
-        token: ${{ secrets.GIT_PAT }}
-
-    - name: Prepare next development version
-      run: |
-        # Prevent infinite build loops: skip if this commit was already a version bump
-        if git log -1 --pretty=format:'%an' | grep -q "CI Bot"; then
-          echo "This commit was already a version bump by CI Bot, skipping to prevent infinite loop"
-          exit 0
-        fi
-
-        echo "Preparing next development version..."
-
-        # Make version.sh executable
-        chmod +x version.sh
-        
-        # Then bump patch version for next development cycle
-        ./version.sh bump-patch
-        
-        # Finally, add SNAPSHOT suffix for development
-        ./version.sh add-snapshot
-
-        NEXT_VERSION=$(./version.sh current | sed 's/Current version: //')
-        echo "Next development version prepared: $NEXT_VERSION"
-
-        # Configure git for committing version changes
-        git config --global user.email "ci@recipe-management.com"
-        git config --global user.name "CI Bot"
-
-        # Commit the version change back to main
-        git add pom.xml
-        git commit -m "Bump version to $NEXT_VERSION for next development cycle"
-
-        # Push the version change
-        git push origin main
-
-        echo "Version $NEXT_VERSION committed to main ✓"

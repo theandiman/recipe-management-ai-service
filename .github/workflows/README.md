@@ -111,10 +111,10 @@ If migrating from Cloud Build:
 - Check service account has `run.admin` role
 - Ensure Cloud Run service exists
 
-### Version Bumping Issues
-- Check that `version.sh` script is executable
-- Verify git permissions for pushing version changes
-- Ensure no concurrent builds are interfering
+### Versioning / Tagging Issues
+- Verify `Determine version` step writes `.build_version`
+- Confirm Docker image is tagged with short SHA from `${GITHUB_SHA::7}`
+- Ensure downloaded artifact includes `.build_version` in downstream jobs
 
 ## Monitoring
 
