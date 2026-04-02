@@ -15,21 +15,23 @@ concurrency:
 jobs:
   ci:
     name: Build and Test
-    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@main
+    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@ad9bd4f5560e22cc6a45500659c7ddddeca5f38d
     permissions:
       contents: read
       actions: write
       packages: read
-    secrets: inherit
 
   cd:
     name: Deploy
     needs: ci
-    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@main
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@ad9bd4f5560e22cc6a45500659c7ddddeca5f38d
     permissions:
       contents: write
       actions: write
     with:
       service_name: recipe-ai-service
       artifact_registry_repository: recipe-ai
-    secrets: inherit
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}

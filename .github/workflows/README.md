@@ -82,9 +82,8 @@ Configure these branch protection rules for the `main` branch:
 
 1. **Require pull request reviews**
 2. **Require status checks to pass**:
-   - `build-and-deploy (sonarcloud)`
-   - `build-and-deploy (security/snyk)`
-   - `build-and-deploy (semgrep-cloud-platform)`
+   - `ci / Build and Test`
+   - `cd / Deploy to Cloud Run`
 3. **Require branches to be up to date**
 4. **Include administrators**
 
