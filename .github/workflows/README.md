@@ -47,7 +47,11 @@ roles:
 
 ## Workflow Features
 
-The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) provides:
+The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) delegates to shared reusable workflows from
+[theandiman/recipe-management](https://github.com/theandiman/recipe-management):
+
+- **`backend-java-ci.yml`** – Build, test, lint, version calculation, and artifact upload
+- **`backend-java-cloud-run-cd.yml`** – Docker build/push, Cloud Run deploy, OWASP ZAP security scan, post-deployment smoke tests, and development version bump
 
 ### ✅ Concurrency Control
 - Only one build runs on main branch at a time
@@ -55,7 +59,7 @@ The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) provides:
 
 ### ✅ Automated Versioning
 - Feature branches: SNAPSHOT versions
-- Main branch: Release versions with automatic increment
+- Main branch: Release versions with automatic increment (derived without mutating tracked files during CI)
 
 ### ✅ Comprehensive Testing
 - Unit tests
@@ -69,9 +73,8 @@ The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) provides:
 - Cloud Run deployments
 
 ### ✅ Observability
-- SonarQube code quality
-- Snyk security scanning
-- Semgrep security analysis
+- SonarQube code quality (optional, disabled by default)
+- OWASP ZAP security scanning
 
 ## Branch Protection Rules
 
@@ -79,9 +82,8 @@ Configure these branch protection rules for the `main` branch:
 
 1. **Require pull request reviews**
 2. **Require status checks to pass**:
-   - `build-and-deploy (sonarcloud)`
-   - `build-and-deploy (security/snyk)`
-   - `build-and-deploy (semgrep-cloud-platform)`
+   - `ci / Build and Test`
+   - `cd / Deploy to Cloud Run`
 3. **Require branches to be up to date**
 4. **Include administrators**
 
