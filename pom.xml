@@ -6,7 +6,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <!-- Bump Spring Boot parent to pick up security fixes in Spring Framework and transitive components. -->
-        <version>3.5.8</version>
+        <version>3.5.13</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -54,7 +54,7 @@
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
-                <version>42.7.8</version>
+                <version>42.7.10</version>
             </dependency>
             <!-- Security overrides: pin embedded Tomcat to the patched release recommended by the advisory
                  (CVE-2025-48989 recommends 10.1.44). Using the first patched Tomcat minimizes the need for a
@@ -62,13 +62,13 @@
             <dependency>
                 <groupId>org.apache.tomcat.embed</groupId>
                 <artifactId>tomcat-embed-core</artifactId>
-                <version>11.0.15</version>
+                <version>11.0.20</version>
             </dependency>
             <!-- Also pin catalina coordinates to match the patched series -->
             <dependency>
                 <groupId>org.apache.tomcat</groupId>
                 <artifactId>tomcat-catalina</artifactId>
-                <version>11.0.15</version>
+                <version>11.0.20</version>
             </dependency>
             <!-- Pin Netty to a patched release to remediate CVEs affecting older 4.1.x releases. -->
             <dependency>
@@ -190,7 +190,7 @@
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
-            <version>9.7.0</version>
+            <version>9.7.1</version>
         </dependency>
 
         <!-- Spring Security for securing REST endpoints -->
@@ -293,7 +293,7 @@
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
                 <!-- upgrade to a published release that supports newer JDKs -->
-                <version>4.9.8.2</version>
+                <version>4.9.8.3</version>
                 <configuration>
                     <!-- Allow skipping SpotBugs via property. CI can set -Dspotbugs.skip=false explicitly. -->
                     <skip>${spotbugs.skip}</skip>
