@@ -29,7 +29,7 @@ public class RecipeControllerTest {
 
     static class TestRecipeService extends RecipeService {
         public TestRecipeService() {
-            super(WebClient.builder(), new com.fasterxml.jackson.databind.ObjectMapper(), new com.recipe.ai.service.AISuggestionValidator());
+            super(WebClient.builder(), new com.fasterxml.jackson.databind.ObjectMapper());
         }
 
         @Override

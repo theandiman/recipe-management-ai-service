@@ -4,7 +4,6 @@ import com.recipe.ai.model.FieldSuggestionRequest;
 import com.recipe.ai.model.FieldSuggestionsResponse;
 import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.service.RecipeService;
-import com.recipe.ai.service.AISuggestionValidationException;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
@@ -52,10 +51,6 @@ public class RecipeController {
             } else {
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
-        } catch (AISuggestionValidationException e) {
-            log.warn("AI suggestion failed schema validation: {}", e.getViolations());
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "AI suggestion failed validation", "violations", e.getViolations()));
         } catch (Exception e) {
             log.error("Error generating recipe: {}", e.getMessage(), e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
