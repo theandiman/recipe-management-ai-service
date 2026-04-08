@@ -15,7 +15,7 @@ public class RecipeServiceParseForcedRawTest {
     public void parseForcedRaw_shouldFindBase64() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         WebClient.Builder builder = WebClient.builder();
-        RecipeService svc = new RecipeService(builder, mapper);
+        RecipeService svc = new RecipeService(builder, mapper, new AISuggestionValidator());
 
     // Use the packaged fixture instead of relying on /tmp being populated by manual runs
     java.nio.file.Path p = java.nio.file.Path.of("src/test/resources/fixtures/gemini_image_direct_sample.json");

@@ -33,7 +33,7 @@ public class RecipeServiceTest {
     @Test
     public void testResolveEffectiveApiKey_prefersSystemProperty() {
         System.setProperty("GEMINI_API_KEY", "sys-key-123");
-        RecipeService service = new RecipeService(WebClient.builder(), new ObjectMapper());
+        RecipeService service = new RecipeService(WebClient.builder(), new ObjectMapper(), new AISuggestionValidator());
         Assertions.assertEquals("sys-key-123", service.resolveEffectiveApiKey());
     }
 
@@ -43,7 +43,7 @@ public class RecipeServiceTest {
         System.setProperty("GEMINI_API_KEY", "prop-key-abc");
 
         // set the private field geminiApiKey via reflection and assert the resolver returns the system property
-        RecipeService service = new RecipeService(WebClient.builder(), new ObjectMapper());
+        RecipeService service = new RecipeService(WebClient.builder(), new ObjectMapper(), new AISuggestionValidator());
         Field f = RecipeService.class.getDeclaredField("geminiApiKey");
         f.setAccessible(true);
         f.set(service, "prop-key-abc");

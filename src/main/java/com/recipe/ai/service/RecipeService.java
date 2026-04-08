@@ -101,6 +101,8 @@ public class RecipeService {
 
     private final ObjectMapper objectMapper;
 
+    private final AISuggestionValidator aiSuggestionValidator;
+
     // Defines the strict JSON schema for the recipe output
     private static final JsonSchema RECIPE_SCHEMA = com.recipe.shared.schema.RecipeSchema.getSchema();
 
@@ -129,11 +131,12 @@ public class RecipeService {
     // Keep the builder and create a client per-call after @Value injection
     private final WebClient.Builder webClientBuilder;
 
-    public RecipeService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
+    public RecipeService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper, AISuggestionValidator aiSuggestionValidator) {
         // Do not build the WebClient here because @Value fields may not be populated yet.
         this.webClientBuilder = webClientBuilder;
         // Make a defensive copy of the provided ObjectMapper to avoid retaining a mutable external reference
         this.objectMapper = objectMapper == null ? new ObjectMapper() : objectMapper.copy();
+        this.aiSuggestionValidator = aiSuggestionValidator;
     }
 
     /**
@@ -637,7 +640,20 @@ public class RecipeService {
 
         // Parse JSON string into shared Recipe model
         try {
-            return objectMapper.readValue(recipeJson, Recipe.class);
+            Recipe recipe = objectMapper.readValue(recipeJson, Recipe.class);
+
+            // Sanitize AI output (strip HTML/control chars) before validation
+            recipe = aiSuggestionValidator.sanitize(recipe);
+
+            // Validate against schema constraints; throw if violations found
+            List<String> violations = aiSuggestionValidator.validate(recipe);
+            if (!violations.isEmpty()) {
+                throw new AISuggestionValidationException(violations);
+            }
+
+            return recipe;
+        } catch (AISuggestionValidationException e) {
+            throw e; // propagate to controller for 400 response
         } catch (Exception e) {
             log.error("Failed to parse recipe JSON into DTO: {}", e.getMessage(), e);
             return null;
