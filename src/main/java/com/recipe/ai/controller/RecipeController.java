@@ -1,6 +1,10 @@
 package com.recipe.ai.controller;
 
+import com.recipe.ai.model.FieldSuggestionRequest;
+import com.recipe.ai.model.FieldSuggestionsResponse;
+import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.service.RecipeService;
+import com.recipe.ai.service.AISuggestionValidationException;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
@@ -23,10 +27,12 @@ import org.slf4j.LoggerFactory;
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final FieldSuggestionService fieldSuggestionService;
     private static final Logger log = LoggerFactory.getLogger(RecipeController.class);
 
-    public RecipeController(RecipeService recipeService) {
+    public RecipeController(RecipeService recipeService, FieldSuggestionService fieldSuggestionService) {
         this.recipeService = recipeService;
+        this.fieldSuggestionService = fieldSuggestionService;
     }
 
     /**
@@ -37,7 +43,7 @@ public class RecipeController {
     * @return The generated shared Recipe, or an error response
      */
     @PostMapping("/generate")
-    public ResponseEntity<Recipe> generateRecipe(@RequestBody RecipeGenerationRequest request) {
+    public ResponseEntity<Object> generateRecipe(@RequestBody RecipeGenerationRequest request) {
         try {
             Recipe recipe = recipeService.generateRecipeModel(request);
             
@@ -46,6 +52,10 @@ public class RecipeController {
             } else {
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
+        } catch (AISuggestionValidationException e) {
+            log.warn("AI suggestion failed schema validation: {}", e.getViolations());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "AI suggestion failed validation", "violations", e.getViolations()));
         } catch (Exception e) {
             log.error("Error generating recipe: {}", e.getMessage(), e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -74,6 +84,27 @@ public class RecipeController {
         } catch (Exception e) {
             log.error("Error generating image: {}", e.getMessage(), e);
             return new ResponseEntity<>(Map.of("status", "failed", "errorMessage", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * POST /api/recipes/suggest-fields
+     * Accepts a partial recipe and returns AI-generated suggestions for
+     * missing or low-quality fields.  Returns an empty suggestions list on
+     * error so the caller can degrade gracefully.
+     */
+    @PostMapping("/suggest-fields")
+    public ResponseEntity<FieldSuggestionsResponse> suggestFields(@RequestBody FieldSuggestionRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            FieldSuggestionsResponse response = fieldSuggestionService.suggestFields(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("suggest-fields: returned {} suggestion(s) in {}ms",
+                    response.getSuggestions().size(), latencyMs);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error in suggest-fields: {}", e.getMessage(), e);
+            return new ResponseEntity<>(new FieldSuggestionsResponse(java.util.List.of()), HttpStatus.OK);
         }
     }
 }
