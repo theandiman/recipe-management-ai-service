@@ -1,6 +1,9 @@
 package com.recipe.ai.controller;
 
 import com.recipe.ai.service.RecipeService;
+import com.recipe.ai.service.InstructionRefinementService;
+import com.recipe.ai.model.InstructionRefinementRequest;
+import com.recipe.ai.model.InstructionRefinementResponse;
 import com.recipe.ai.model.Units;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
@@ -15,10 +18,6 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Lightweight unit tests for the controller that avoid starting a Spring context
- * or using Mockito's inline bytecode instrumentation (which can fail on some JDKs).
- */
 public class RecipeControllerTest {
 
     private RecipeController controller;
@@ -50,9 +49,23 @@ public class RecipeControllerTest {
         }
     }
 
+    static class TestInstructionRefinementService extends InstructionRefinementService {
+        public TestInstructionRefinementService() {
+            super(WebClient.builder(), new com.recipe.ai.service.GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+        }
+
+        @Override
+        public InstructionRefinementResponse refineInstructions(InstructionRefinementRequest request) {
+            return new InstructionRefinementResponse(List.of());
+        }
+    }
+
     @BeforeEach
     void setup() {
-        this.controller = new RecipeController(new TestRecipeService());
+        this.controller = new RecipeController(
+            new TestRecipeService(),
+            new TestInstructionRefinementService()
+        );
     }
 
     @Test
@@ -60,22 +73,24 @@ public class RecipeControllerTest {
         RecipeGenerationRequest request = new RecipeGenerationRequest();
         request.setPrompt("");
         request.setPantryItems(List.of());
-        
-    ResponseEntity<Recipe> resp = controller.generateRecipe(request);
+
+        ResponseEntity<Recipe> resp = controller.generateRecipe(request);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody()).isNotNull();
-    assertThat(resp.getBody().getRecipeName()).isEqualTo("Test Recipe");
+        assertThat(resp.getBody().getRecipeName()).isEqualTo("Test Recipe");
     }
 
     @Test
     void generateImage_allowsEmptyPrompt_andDelegatesToService() throws Exception {
         ImageGenerationRequest request = new ImageGenerationRequest();
         request.setPrompt("");
-        
+
         ResponseEntity<Map<String, Object>> resp = controller.generateImage(request, false);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody()).containsEntry("status", "skipped");
     }
+
+
 }

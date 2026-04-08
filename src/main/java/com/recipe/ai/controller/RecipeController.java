@@ -1,5 +1,8 @@
 package com.recipe.ai.controller;
 
+import com.recipe.ai.model.InstructionRefinementRequest;
+import com.recipe.ai.model.InstructionRefinementResponse;
+import com.recipe.ai.service.InstructionRefinementService;
 import com.recipe.ai.service.RecipeService;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
@@ -8,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +27,13 @@ import org.slf4j.LoggerFactory;
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final InstructionRefinementService instructionRefinementService;
     private static final Logger log = LoggerFactory.getLogger(RecipeController.class);
 
-    public RecipeController(RecipeService recipeService) {
+    public RecipeController(RecipeService recipeService,
+                            InstructionRefinementService instructionRefinementService) {
         this.recipeService = recipeService;
+        this.instructionRefinementService = instructionRefinementService;
     }
 
     /**
@@ -74,6 +81,28 @@ public class RecipeController {
         } catch (Exception e) {
             log.error("Error generating image: {}", e.getMessage(), e);
             return new ResponseEntity<>(Map.of("status", "failed", "errorMessage", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * POST /api/recipes/refine-instructions
+     * Accepts a list of instruction steps and returns AI-refined versions for
+     * steps that were actually improved.  Unchanged steps are omitted.
+     * Returns an empty refinements list on error so callers can degrade gracefully.
+     */
+    @PostMapping("/refine-instructions")
+    public ResponseEntity<InstructionRefinementResponse> refineInstructions(
+            @RequestBody InstructionRefinementRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            InstructionRefinementResponse response = instructionRefinementService.refineInstructions(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("refine-instructions: returned {} refinement(s) in {}ms",
+                    response.getRefinements().size(), latencyMs);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error in refine-instructions: {}", e.getMessage(), e);
+            return new ResponseEntity<>(new InstructionRefinementResponse(List.of()), HttpStatus.OK);
         }
     }
 }
