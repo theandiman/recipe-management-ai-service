@@ -77,7 +77,7 @@ public class InstructionRefinementService {
 
         String effectiveApiKey = apiKeyResolver.resolveEffectiveApiKey();
         String prompt = buildPrompt(request);
-        String jsonSchema = buildResponseSchema(instructions.size());
+        String jsonSchema = buildResponseSchema();
 
         Map<String, Object> payload = Map.of(
             "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
@@ -201,7 +201,7 @@ public class InstructionRefinementService {
         }
     }
 
-    private String buildResponseSchema(int stepCount) {
+    private String buildResponseSchema() {
         return """
             {
               "type": "object",
