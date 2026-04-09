@@ -13,11 +13,12 @@ import org.springframework.test.context.DynamicPropertySource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@Disabled("springdoc-openapi incompatible with Spring Boot 4 — WebMvcProperties moved; pre-existing failure")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
-@Disabled("Spring Boot 4 / springdoc incompatibility - pre-existing issue")
 public class RecipeServiceGeminiErrorsTest {
 
     private static MockWebServer mockWebServer;

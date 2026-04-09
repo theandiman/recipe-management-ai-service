@@ -1,8 +1,5 @@
 package com.recipe.ai;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,9 +12,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * Generates an OpenAPI spec for documentation purposes.
+ * Disabled because springdoc-openapi is not yet fully compatible with Spring Boot 4.
+ */
+@Disabled("springdoc-openapi incompatible with Spring Boot 4 — WebMvcProperties moved")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @TestPropertySource(properties = "auth.enabled=false")
-@Disabled("Spring Boot 4 / springdoc incompatibility - pre-existing issue")
 class OpenApiGeneratorTest {
 
     @Autowired
