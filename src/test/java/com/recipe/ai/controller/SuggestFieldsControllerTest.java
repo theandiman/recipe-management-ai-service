@@ -40,7 +40,7 @@ class SuggestFieldsControllerTest {
 
     static class NoOpRecipeService extends com.recipe.ai.service.RecipeService {
         NoOpRecipeService() {
-            super(WebClient.builder(), new ObjectMapper());
+            super(WebClient.builder(), new ObjectMapper(), new com.recipe.ai.service.AISuggestionValidator());
         }
     }
 

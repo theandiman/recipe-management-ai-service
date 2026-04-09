@@ -38,7 +38,7 @@ public class RecipeServiceWebClientTest {
         Mockito.when(builder.build()).thenReturn(webClient);
 
     // Create the service with mocked builder
-    RecipeService service = new RecipeService(builder, new ObjectMapper());
+    RecipeService service = new RecipeService(builder, new ObjectMapper(), new AISuggestionValidator());
 
     // The service normally gets these from @Value injection; set them via reflection for the unit test
     java.lang.reflect.Field urlField = RecipeService.class.getDeclaredField("geminiApiUrl");

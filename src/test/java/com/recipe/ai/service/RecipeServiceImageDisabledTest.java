@@ -18,7 +18,7 @@ public class RecipeServiceImageDisabledTest {
     public void whenImageDisabled_shouldNotInjectPlaceholder_andMarkSkipped() throws Exception {
         WebClient.Builder builder = WebClient.builder();
         ObjectMapper mapper = new ObjectMapper();
-        RecipeService svc = new RecipeService(builder, mapper);
+        RecipeService svc = new RecipeService(builder, mapper, new AISuggestionValidator());
 
     // Force dev fallback to avoid external calls and ensure no API key is present
     setPrivateField(svc, "devFallback", true);
