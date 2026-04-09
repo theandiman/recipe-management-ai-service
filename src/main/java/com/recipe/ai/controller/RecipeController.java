@@ -6,9 +6,12 @@ import com.recipe.ai.model.IngredientNormalizationRequest;
 import com.recipe.ai.model.IngredientNormalizationResponse;
 import com.recipe.ai.model.InstructionRefinementRequest;
 import com.recipe.ai.model.InstructionRefinementResponse;
+import com.recipe.ai.model.NutritionEstimateRequest;
+import com.recipe.ai.model.NutritionEstimateResponse;
 import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.service.IngredientNormalizationService;
 import com.recipe.ai.service.InstructionRefinementService;
+import com.recipe.ai.service.NutritionEstimateService;
 import com.recipe.ai.service.RecipeService;
 import com.recipe.ai.service.AISuggestionValidationException;
 import com.recipe.shared.model.Recipe;
@@ -35,16 +38,19 @@ public class RecipeController {
     private final FieldSuggestionService fieldSuggestionService;
     private final InstructionRefinementService instructionRefinementService;
     private final IngredientNormalizationService ingredientNormalizationService;
+    private final NutritionEstimateService nutritionEstimateService;
     private static final Logger log = LoggerFactory.getLogger(RecipeController.class);
 
     public RecipeController(RecipeService recipeService,
                             FieldSuggestionService fieldSuggestionService,
                             InstructionRefinementService instructionRefinementService,
-                            IngredientNormalizationService ingredientNormalizationService) {
+                            IngredientNormalizationService ingredientNormalizationService,
+                            NutritionEstimateService nutritionEstimateService) {
         this.recipeService = recipeService;
         this.fieldSuggestionService = fieldSuggestionService;
         this.instructionRefinementService = instructionRefinementService;
         this.ingredientNormalizationService = ingredientNormalizationService;
+        this.nutritionEstimateService = nutritionEstimateService;
     }
 
     @PostMapping("/generate")
@@ -140,6 +146,25 @@ public class RecipeController {
         } catch (Exception e) {
             log.error("Error in normalize-ingredients: {}", e.getMessage(), e);
             return new ResponseEntity<>(new IngredientNormalizationResponse(List.of()), HttpStatus.OK);
+        }
+    }
+
+    /**
+     * POST /api/recipes/estimate-nutrition
+     * Estimates nutritional values for a recipe based on its ingredients.
+     */
+    @PostMapping("/estimate-nutrition")
+    public ResponseEntity<NutritionEstimateResponse> estimateNutrition(
+            @RequestBody NutritionEstimateRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            NutritionEstimateResponse response = nutritionEstimateService.estimateNutrition(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("estimate-nutrition: completed in {}ms", latencyMs);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error in estimate-nutrition: {}", e.getMessage(), e);
+            return ResponseEntity.ok(new NutritionEstimateResponse(null, null));
         }
     }
 }
