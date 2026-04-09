@@ -3,8 +3,11 @@ package com.recipe.ai.controller;
 import com.recipe.ai.service.RecipeService;
 import com.recipe.ai.service.InstructionRefinementService;
 import com.recipe.ai.service.IngredientNormalizationService;
+import com.recipe.ai.service.NutritionEstimateService;
 import com.recipe.ai.model.IngredientNormalizationRequest;
 import com.recipe.ai.model.IngredientNormalizationResponse;
+import com.recipe.ai.model.NutritionEstimateRequest;
+import com.recipe.ai.model.NutritionEstimateResponse;
 import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.model.InstructionRefinementRequest;
 import com.recipe.ai.model.InstructionRefinementResponse;
@@ -94,13 +97,24 @@ public class RecipeControllerTest {
         }
     }
 
+    static class NoOpNutritionEstimateService extends NutritionEstimateService {
+        public NoOpNutritionEstimateService() {
+            super(WebClient.builder(), new com.recipe.ai.service.GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+        }
+        @Override
+        public NutritionEstimateResponse estimateNutrition(NutritionEstimateRequest request) {
+            return new NutritionEstimateResponse(null, null);
+        }
+    }
+
     @BeforeEach
     void setup() {
         this.controller = new RecipeController(
             new TestRecipeService(),
             new TestFieldSuggestionService(),
             new TestInstructionRefinementService(),
-            new NoOpIngredientNormalizationService()
+            new NoOpIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
         );
     }
 

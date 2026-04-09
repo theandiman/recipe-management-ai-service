@@ -10,8 +10,11 @@ import com.recipe.ai.service.IngredientNormalizationService;
 import com.recipe.ai.model.IngredientNormalizationRequest;
 import com.recipe.ai.model.IngredientNormalizationResponse;
 import com.recipe.ai.service.InstructionRefinementService;
+import com.recipe.ai.service.NutritionEstimateService;
 import com.recipe.ai.service.GeminiApiKeyResolver;
 import com.recipe.ai.service.AISuggestionValidator;
+import com.recipe.ai.model.NutritionEstimateRequest;
+import com.recipe.ai.model.NutritionEstimateResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -65,6 +68,16 @@ class SuggestFieldsControllerTest {
         }
     }
 
+    static class NoOpNutritionEstimateService extends NutritionEstimateService {
+        NoOpNutritionEstimateService() {
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+        }
+        @Override
+        public NutritionEstimateResponse estimateNutrition(NutritionEstimateRequest request) {
+            return new NutritionEstimateResponse(null, null);
+        }
+    }
+
     @BeforeEach
     void setUp() {
         FieldSuggestionsResponse stubResp = new FieldSuggestionsResponse(List.of(
@@ -74,7 +87,8 @@ class SuggestFieldsControllerTest {
             new NoOpRecipeService(),
             new StubFieldSuggestionService(stubResp),
             new NoOpInstructionRefinementService(),
-            new NoOpIngredientNormalizationService()
+            new NoOpIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
         );
     }
 
@@ -98,7 +112,8 @@ class SuggestFieldsControllerTest {
             new NoOpRecipeService(),
             new StubFieldSuggestionService(empty),
             new NoOpInstructionRefinementService(),
-            new NoOpIngredientNormalizationService()
+            new NoOpIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
         );
 
         ResponseEntity<FieldSuggestionsResponse> resp = ctrl.suggestFields(new FieldSuggestionRequest());

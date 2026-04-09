@@ -11,7 +11,10 @@ import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.service.GeminiApiKeyResolver;
 import com.recipe.ai.service.IngredientNormalizationService;
 import com.recipe.ai.service.InstructionRefinementService;
+import com.recipe.ai.service.NutritionEstimateService;
 import com.recipe.ai.service.AISuggestionValidator;
+import com.recipe.ai.model.NutritionEstimateRequest;
+import com.recipe.ai.model.NutritionEstimateResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -92,6 +95,16 @@ class NormalizeIngredientsControllerTest {
         }
     }
 
+    static class NoOpNutritionEstimateService extends NutritionEstimateService {
+        NoOpNutritionEstimateService() {
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+        }
+        @Override
+        public NutritionEstimateResponse estimateNutrition(NutritionEstimateRequest request) {
+            return new NutritionEstimateResponse(null, null);
+        }
+    }
+
     @BeforeEach
     void setUp() {
         IngredientNormalizationResponse stubResp = new IngredientNormalizationResponse(List.of(
@@ -101,7 +114,8 @@ class NormalizeIngredientsControllerTest {
             new NoOpRecipeService(),
             new NoOpFieldSuggestionService(),
             new NoOpInstructionRefinementService(),
-            new StubIngredientNormalizationService(stubResp)
+            new StubIngredientNormalizationService(stubResp),
+            new NoOpNutritionEstimateService()
         );
     }
 
@@ -127,7 +141,8 @@ class NormalizeIngredientsControllerTest {
             new NoOpRecipeService(),
             new NoOpFieldSuggestionService(),
             new NoOpInstructionRefinementService(),
-            new StubIngredientNormalizationService(new IngredientNormalizationResponse(List.of()))
+            new StubIngredientNormalizationService(new IngredientNormalizationResponse(List.of())),
+            new NoOpNutritionEstimateService()
         );
         IngredientNormalizationRequest req = new IngredientNormalizationRequest();
         req.setIngredients(List.of());
@@ -144,7 +159,8 @@ class NormalizeIngredientsControllerTest {
             new NoOpRecipeService(),
             new NoOpFieldSuggestionService(),
             new NoOpInstructionRefinementService(),
-            new ThrowingIngredientNormalizationService()
+            new ThrowingIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
         );
         IngredientNormalizationRequest req = new IngredientNormalizationRequest();
         req.setIngredients(List.of("some ingredient"));
