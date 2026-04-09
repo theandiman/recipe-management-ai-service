@@ -3,8 +3,12 @@ package com.recipe.ai.controller;
 import com.recipe.ai.model.InstructionRefinement;
 import com.recipe.ai.model.InstructionRefinementRequest;
 import com.recipe.ai.model.InstructionRefinementResponse;
+import com.recipe.ai.model.FieldSuggestionRequest;
+import com.recipe.ai.model.FieldSuggestionsResponse;
 import com.recipe.ai.service.InstructionRefinementService;
+import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.service.GeminiApiKeyResolver;
+import com.recipe.ai.service.AISuggestionValidator;
 import com.recipe.ai.service.RecipeService;
 import com.recipe.ai.model.Units;
 import com.recipe.ai.model.RecipeGenerationRequest;
@@ -48,7 +52,7 @@ class RefineInstructionsControllerTest {
     }
 
     static class NoOpRecipeService extends RecipeService {
-        NoOpRecipeService() { super(WebClient.builder(), new ObjectMapper()); }
+        NoOpRecipeService() { super(WebClient.builder(), new ObjectMapper(), new AISuggestionValidator()); }
         @Override
         public Recipe generateRecipeModel(RecipeGenerationRequest request) {
             return Recipe.builder().recipeName("Test").servings(2).build();
@@ -67,6 +71,16 @@ class RefineInstructionsControllerTest {
         }
     }
 
+    static class NoOpFieldSuggestionService extends FieldSuggestionService {
+        NoOpFieldSuggestionService() {
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+        }
+        @Override
+        public FieldSuggestionsResponse suggestFields(FieldSuggestionRequest request) {
+            return new FieldSuggestionsResponse(List.of());
+        }
+    }
+
     @BeforeEach
     void setUp() {
         InstructionRefinementResponse stubResp = new InstructionRefinementResponse(List.of(
@@ -74,6 +88,7 @@ class RefineInstructionsControllerTest {
         ));
         controller = new RecipeController(
             new NoOpRecipeService(),
+            new NoOpFieldSuggestionService(),
             new StubInstructionRefinementService(stubResp)
         );
     }
@@ -96,10 +111,11 @@ class RefineInstructionsControllerTest {
     void refineInstructions_emptyResponse_returnsOkWithEmptyList() {
         RecipeController ctrl = new RecipeController(
             new NoOpRecipeService(),
+            new NoOpFieldSuggestionService(),
             new StubInstructionRefinementService(new InstructionRefinementResponse(List.of()))
         );
         InstructionRefinementRequest req = new InstructionRefinementRequest();
-        req.setInstructions(List.of("Preheat oven to 375\u00b0F."));
+        req.setInstructions(List.of("Preheat oven to 375°F."));
         ResponseEntity<InstructionRefinementResponse> resp = ctrl.refineInstructions(req);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().getRefinements()).isEmpty();
@@ -109,6 +125,7 @@ class RefineInstructionsControllerTest {
     void refineInstructions_serviceThrows_returnsOkWithEmptyList() {
         RecipeController ctrl = new RecipeController(
             new NoOpRecipeService(),
+            new NoOpFieldSuggestionService(),
             new ThrowingInstructionRefinementService()
         );
         InstructionRefinementRequest req = new InstructionRefinementRequest();

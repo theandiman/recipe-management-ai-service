@@ -128,7 +128,7 @@ public class RecipeControllerTest {
     @Test
     void refineInstructions_delegatesToService_andReturnsOk() {
         InstructionRefinementRequest request = new InstructionRefinementRequest();
-        request.setSteps(List.of("Boil water", "Add pasta"));
+        request.setInstructions(List.of("Boil water", "Add pasta"));
 
         ResponseEntity<InstructionRefinementResponse> resp = controller.refineInstructions(request);
 

@@ -3,8 +3,12 @@ package com.recipe.ai.controller;
 import com.recipe.ai.model.FieldSuggestion;
 import com.recipe.ai.model.FieldSuggestionRequest;
 import com.recipe.ai.model.FieldSuggestionsResponse;
+import com.recipe.ai.model.InstructionRefinementRequest;
+import com.recipe.ai.model.InstructionRefinementResponse;
 import com.recipe.ai.service.FieldSuggestionService;
+import com.recipe.ai.service.InstructionRefinementService;
 import com.recipe.ai.service.GeminiApiKeyResolver;
+import com.recipe.ai.service.AISuggestionValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -16,22 +20,16 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Unit tests for the suggest-fields endpoint.
- * Uses lightweight test doubles to avoid starting a Spring context.
- */
 class SuggestFieldsControllerTest {
 
     private RecipeController controller;
 
     static class StubFieldSuggestionService extends FieldSuggestionService {
         private final FieldSuggestionsResponse stubResponse;
-
         StubFieldSuggestionService(FieldSuggestionsResponse stubResponse) {
             super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
             this.stubResponse = stubResponse;
         }
-
         @Override
         public FieldSuggestionsResponse suggestFields(FieldSuggestionRequest request) {
             return stubResponse;
@@ -40,7 +38,17 @@ class SuggestFieldsControllerTest {
 
     static class NoOpRecipeService extends com.recipe.ai.service.RecipeService {
         NoOpRecipeService() {
-            super(WebClient.builder(), new ObjectMapper(), new com.recipe.ai.service.AISuggestionValidator());
+            super(WebClient.builder(), new ObjectMapper(), new AISuggestionValidator());
+        }
+    }
+
+    static class NoOpInstructionRefinementService extends InstructionRefinementService {
+        NoOpInstructionRefinementService() {
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+        }
+        @Override
+        public InstructionRefinementResponse refineInstructions(InstructionRefinementRequest request) {
+            return new InstructionRefinementResponse(List.of());
         }
     }
 
@@ -49,7 +57,11 @@ class SuggestFieldsControllerTest {
         FieldSuggestionsResponse stubResp = new FieldSuggestionsResponse(List.of(
             new FieldSuggestion("description", "A tasty pasta dish", "No description provided")
         ));
-        controller = new RecipeController(new NoOpRecipeService(), new StubFieldSuggestionService(stubResp));
+        controller = new RecipeController(
+            new NoOpRecipeService(),
+            new StubFieldSuggestionService(stubResp),
+            new NoOpInstructionRefinementService()
+        );
     }
 
     @Test
@@ -68,7 +80,11 @@ class SuggestFieldsControllerTest {
     @Test
     void suggestFields_withEmptyResponse_returnsOkWithEmptyList() {
         FieldSuggestionsResponse empty = new FieldSuggestionsResponse(List.of());
-        RecipeController ctrl = new RecipeController(new NoOpRecipeService(), new StubFieldSuggestionService(empty));
+        RecipeController ctrl = new RecipeController(
+            new NoOpRecipeService(),
+            new StubFieldSuggestionService(empty),
+            new NoOpInstructionRefinementService()
+        );
 
         ResponseEntity<FieldSuggestionsResponse> resp = ctrl.suggestFields(new FieldSuggestionRequest());
 

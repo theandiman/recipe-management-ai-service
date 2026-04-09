@@ -22,7 +22,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Disabled("springdoc-openapi incompatible with Spring Boot 4 — WebMvcProperties moved")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @TestPropertySource(properties = "auth.enabled=false")
-@Disabled("Spring Boot 4 migration - AutoConfigureMockMvc not available")
 class OpenApiGeneratorTest {
 
     @Autowired
