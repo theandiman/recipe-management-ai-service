@@ -6,6 +6,9 @@ import com.recipe.ai.model.FieldSuggestionsResponse;
 import com.recipe.ai.model.InstructionRefinementRequest;
 import com.recipe.ai.model.InstructionRefinementResponse;
 import com.recipe.ai.service.FieldSuggestionService;
+import com.recipe.ai.service.IngredientNormalizationService;
+import com.recipe.ai.model.IngredientNormalizationRequest;
+import com.recipe.ai.model.IngredientNormalizationResponse;
 import com.recipe.ai.service.InstructionRefinementService;
 import com.recipe.ai.service.GeminiApiKeyResolver;
 import com.recipe.ai.service.AISuggestionValidator;
@@ -52,6 +55,16 @@ class SuggestFieldsControllerTest {
         }
     }
 
+    static class NoOpIngredientNormalizationService extends IngredientNormalizationService {
+        NoOpIngredientNormalizationService() {
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+        }
+        @Override
+        public IngredientNormalizationResponse normalizeIngredients(IngredientNormalizationRequest request) {
+            return new IngredientNormalizationResponse(List.of());
+        }
+    }
+
     @BeforeEach
     void setUp() {
         FieldSuggestionsResponse stubResp = new FieldSuggestionsResponse(List.of(
@@ -60,7 +73,8 @@ class SuggestFieldsControllerTest {
         controller = new RecipeController(
             new NoOpRecipeService(),
             new StubFieldSuggestionService(stubResp),
-            new NoOpInstructionRefinementService()
+            new NoOpInstructionRefinementService(),
+            new NoOpIngredientNormalizationService()
         );
     }
 
@@ -83,7 +97,8 @@ class SuggestFieldsControllerTest {
         RecipeController ctrl = new RecipeController(
             new NoOpRecipeService(),
             new StubFieldSuggestionService(empty),
-            new NoOpInstructionRefinementService()
+            new NoOpInstructionRefinementService(),
+            new NoOpIngredientNormalizationService()
         );
 
         ResponseEntity<FieldSuggestionsResponse> resp = ctrl.suggestFields(new FieldSuggestionRequest());

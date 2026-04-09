@@ -10,6 +10,9 @@ import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.service.GeminiApiKeyResolver;
 import com.recipe.ai.service.AISuggestionValidator;
 import com.recipe.ai.service.RecipeService;
+import com.recipe.ai.service.IngredientNormalizationService;
+import com.recipe.ai.model.IngredientNormalizationRequest;
+import com.recipe.ai.model.IngredientNormalizationResponse;
 import com.recipe.ai.model.Units;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
@@ -81,6 +84,16 @@ class RefineInstructionsControllerTest {
         }
     }
 
+    static class NoOpIngredientNormalizationService extends IngredientNormalizationService {
+        NoOpIngredientNormalizationService() {
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+        }
+        @Override
+        public IngredientNormalizationResponse normalizeIngredients(IngredientNormalizationRequest request) {
+            return new IngredientNormalizationResponse(List.of());
+        }
+    }
+
     @BeforeEach
     void setUp() {
         InstructionRefinementResponse stubResp = new InstructionRefinementResponse(List.of(
@@ -89,7 +102,8 @@ class RefineInstructionsControllerTest {
         controller = new RecipeController(
             new NoOpRecipeService(),
             new NoOpFieldSuggestionService(),
-            new StubInstructionRefinementService(stubResp)
+            new StubInstructionRefinementService(stubResp),
+            new NoOpIngredientNormalizationService()
         );
     }
 
@@ -112,7 +126,8 @@ class RefineInstructionsControllerTest {
         RecipeController ctrl = new RecipeController(
             new NoOpRecipeService(),
             new NoOpFieldSuggestionService(),
-            new StubInstructionRefinementService(new InstructionRefinementResponse(List.of()))
+            new StubInstructionRefinementService(new InstructionRefinementResponse(List.of())),
+            new NoOpIngredientNormalizationService()
         );
         InstructionRefinementRequest req = new InstructionRefinementRequest();
         req.setInstructions(List.of("Preheat oven to 375°F."));
@@ -126,7 +141,8 @@ class RefineInstructionsControllerTest {
         RecipeController ctrl = new RecipeController(
             new NoOpRecipeService(),
             new NoOpFieldSuggestionService(),
-            new ThrowingInstructionRefinementService()
+            new ThrowingInstructionRefinementService(),
+            new NoOpIngredientNormalizationService()
         );
         InstructionRefinementRequest req = new InstructionRefinementRequest();
         req.setInstructions(List.of("some step"));
