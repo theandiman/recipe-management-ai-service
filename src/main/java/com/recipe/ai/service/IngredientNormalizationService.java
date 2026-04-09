@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recipe.ai.model.IngredientNormalization;
 import com.recipe.ai.model.IngredientNormalizationRequest;
 import com.recipe.ai.model.IngredientNormalizationResponse;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service that calls Gemini to detect ambiguous or unclear ingredient lines
@@ -41,13 +43,19 @@ public class IngredientNormalizationService {
     private final WebClient.Builder webClientBuilder;
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
+
+    private static final String ENDPOINT_TAG = "endpoint";
+    private static final String ENDPOINT_VALUE = "normalize-ingredients";
 
     public IngredientNormalizationService(WebClient.Builder webClientBuilder,
                                           GeminiApiKeyResolver apiKeyResolver,
-                                          ObjectMapper objectMapper) {
+                                          ObjectMapper objectMapper,
+                                          MeterRegistry meterRegistry) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper;
+        this.meterRegistry = meterRegistry;
     }
 
     /**
@@ -56,6 +64,22 @@ public class IngredientNormalizationService {
      * Returns empty list on any error (graceful degradation).
      */
     public IngredientNormalizationResponse normalizeIngredients(IngredientNormalizationRequest request) {
+        long start = System.currentTimeMillis();
+        try {
+            meterRegistry.counter("ai.suggestion.requests", ENDPOINT_TAG, ENDPOINT_VALUE).increment();
+            IngredientNormalizationResponse result = doNormalizeIngredients(request);
+            return result;
+        } catch (Exception e) {
+            meterRegistry.counter("ai.suggestion.errors", ENDPOINT_TAG, ENDPOINT_VALUE).increment();
+            log.error("Unhandled error in normalizeIngredients: {}", e.getMessage(), e);
+            return new IngredientNormalizationResponse(List.of());
+        } finally {
+            meterRegistry.timer("ai.suggestion.latency", ENDPOINT_TAG, ENDPOINT_VALUE)
+                    .record(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private IngredientNormalizationResponse doNormalizeIngredients(IngredientNormalizationRequest request) {
         List<String> ingredients = request.getIngredients();
         if (ingredients == null || ingredients.isEmpty()) {
             return new IngredientNormalizationResponse(List.of());

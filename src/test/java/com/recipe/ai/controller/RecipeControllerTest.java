@@ -59,7 +59,8 @@ public class RecipeControllerTest {
         public TestFieldSuggestionService() {
             super(WebClient.builder(),
                   new com.recipe.ai.service.GeminiApiKeyResolver(),
-                  new com.fasterxml.jackson.databind.ObjectMapper());
+                  new com.fasterxml.jackson.databind.ObjectMapper(),
+                  new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
 
         @Override
@@ -72,7 +73,8 @@ public class RecipeControllerTest {
 
     static class TestInstructionRefinementService extends InstructionRefinementService {
         public TestInstructionRefinementService() {
-            super(WebClient.builder(), new com.recipe.ai.service.GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+            super(WebClient.builder(), new com.recipe.ai.service.GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper(),
+                  new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
 
         @Override
@@ -83,7 +85,8 @@ public class RecipeControllerTest {
 
     static class NoOpIngredientNormalizationService extends IngredientNormalizationService {
         public NoOpIngredientNormalizationService() {
-            super(WebClient.builder(), new com.recipe.ai.service.GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+            super(WebClient.builder(), new com.recipe.ai.service.GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper(),
+                  new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
         @Override
         public IngredientNormalizationResponse normalizeIngredients(IngredientNormalizationRequest request) {
