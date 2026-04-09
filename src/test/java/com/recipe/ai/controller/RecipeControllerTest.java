@@ -2,6 +2,9 @@ package com.recipe.ai.controller;
 
 import com.recipe.ai.service.RecipeService;
 import com.recipe.ai.service.InstructionRefinementService;
+import com.recipe.ai.service.IngredientNormalizationService;
+import com.recipe.ai.model.IngredientNormalizationRequest;
+import com.recipe.ai.model.IngredientNormalizationResponse;
 import com.recipe.ai.service.FieldSuggestionService;
 import com.recipe.ai.model.InstructionRefinementRequest;
 import com.recipe.ai.model.InstructionRefinementResponse;
@@ -78,12 +81,23 @@ public class RecipeControllerTest {
         }
     }
 
+    static class NoOpIngredientNormalizationService extends IngredientNormalizationService {
+        public NoOpIngredientNormalizationService() {
+            super(WebClient.builder(), new com.recipe.ai.service.GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+        }
+        @Override
+        public IngredientNormalizationResponse normalizeIngredients(IngredientNormalizationRequest request) {
+            return new IngredientNormalizationResponse(List.of());
+        }
+    }
+
     @BeforeEach
     void setup() {
         this.controller = new RecipeController(
             new TestRecipeService(),
             new TestFieldSuggestionService(),
-            new TestInstructionRefinementService()
+            new TestInstructionRefinementService(),
+            new NoOpIngredientNormalizationService()
         );
     }
 

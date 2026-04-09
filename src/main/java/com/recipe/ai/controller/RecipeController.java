@@ -2,9 +2,12 @@ package com.recipe.ai.controller;
 
 import com.recipe.ai.model.FieldSuggestionRequest;
 import com.recipe.ai.model.FieldSuggestionsResponse;
+import com.recipe.ai.model.IngredientNormalizationRequest;
+import com.recipe.ai.model.IngredientNormalizationResponse;
 import com.recipe.ai.model.InstructionRefinementRequest;
 import com.recipe.ai.model.InstructionRefinementResponse;
 import com.recipe.ai.service.FieldSuggestionService;
+import com.recipe.ai.service.IngredientNormalizationService;
 import com.recipe.ai.service.InstructionRefinementService;
 import com.recipe.ai.service.RecipeService;
 import com.recipe.ai.service.AISuggestionValidationException;
@@ -21,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * REST Controller to expose the AI recipe generation endpoint.
+ * REST Controller to expose AI recipe endpoints.
  */
 @RestController
 @RequestMapping("/api/recipes")
@@ -31,14 +34,17 @@ public class RecipeController {
     private final RecipeService recipeService;
     private final FieldSuggestionService fieldSuggestionService;
     private final InstructionRefinementService instructionRefinementService;
+    private final IngredientNormalizationService ingredientNormalizationService;
     private static final Logger log = LoggerFactory.getLogger(RecipeController.class);
 
     public RecipeController(RecipeService recipeService,
                             FieldSuggestionService fieldSuggestionService,
-                            InstructionRefinementService instructionRefinementService) {
+                            InstructionRefinementService instructionRefinementService,
+                            IngredientNormalizationService ingredientNormalizationService) {
         this.recipeService = recipeService;
         this.fieldSuggestionService = fieldSuggestionService;
         this.instructionRefinementService = instructionRefinementService;
+        this.ingredientNormalizationService = ingredientNormalizationService;
     }
 
     @PostMapping("/generate")
@@ -82,8 +88,6 @@ public class RecipeController {
 
     /**
      * POST /api/recipes/suggest-fields
-     * Accepts a partial recipe and returns AI-generated suggestions for
-     * missing or low-quality fields.
      */
     @PostMapping("/suggest-fields")
     public ResponseEntity<FieldSuggestionsResponse> suggestFields(@RequestBody FieldSuggestionRequest request) {
@@ -102,8 +106,6 @@ public class RecipeController {
 
     /**
      * POST /api/recipes/refine-instructions
-     * Accepts a list of instruction steps and returns AI-refined versions for
-     * steps that were actually improved.
      */
     @PostMapping("/refine-instructions")
     public ResponseEntity<InstructionRefinementResponse> refineInstructions(
@@ -118,6 +120,26 @@ public class RecipeController {
         } catch (Exception e) {
             log.error("Error in refine-instructions: {}", e.getMessage(), e);
             return new ResponseEntity<>(new InstructionRefinementResponse(List.of()), HttpStatus.OK);
+        }
+    }
+
+    /**
+     * POST /api/recipes/normalize-ingredients
+     * Detects ambiguous ingredient lines and returns normalization suggestions.
+     */
+    @PostMapping("/normalize-ingredients")
+    public ResponseEntity<IngredientNormalizationResponse> normalizeIngredients(
+            @RequestBody IngredientNormalizationRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            IngredientNormalizationResponse response = ingredientNormalizationService.normalizeIngredients(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("normalize-ingredients: returned {} normalization(s) in {}ms",
+                    response.getNormalizations().size(), latencyMs);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error in normalize-ingredients: {}", e.getMessage(), e);
+            return new ResponseEntity<>(new IngredientNormalizationResponse(List.of()), HttpStatus.OK);
         }
     }
 }
