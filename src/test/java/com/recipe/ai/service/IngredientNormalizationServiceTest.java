@@ -21,7 +21,8 @@ class IngredientNormalizationServiceTest {
         private final String stubJson;
 
         StubIngredientNormalizationService(String stubJson) {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper(),
+                  new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
             this.stubJson = stubJson;
         }
 
@@ -94,7 +95,8 @@ class IngredientNormalizationServiceTest {
     @Test
     void normalizeIngredients_emptyIngredients_returnsEmpty() {
         IngredientNormalizationService service = new IngredientNormalizationService(
-            WebClient.builder(), new GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+            WebClient.builder(), new GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper(),
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         IngredientNormalizationRequest req = new IngredientNormalizationRequest();
         req.setIngredients(List.of());
 
@@ -106,7 +108,8 @@ class IngredientNormalizationServiceTest {
     @Test
     void normalizeIngredients_nullIngredients_returnsEmpty() {
         IngredientNormalizationService service = new IngredientNormalizationService(
-            WebClient.builder(), new GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper());
+            WebClient.builder(), new GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper(),
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         IngredientNormalizationRequest req = new IngredientNormalizationRequest();
         req.setIngredients(null);
 

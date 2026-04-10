@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recipe.ai.model.InstructionRefinement;
 import com.recipe.ai.model.InstructionRefinementRequest;
 import com.recipe.ai.model.InstructionRefinementResponse;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -49,13 +51,19 @@ public class InstructionRefinementService {
     private final WebClient.Builder webClientBuilder;
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
+
+    private static final String ENDPOINT_TAG = "endpoint";
+    private static final String ENDPOINT_VALUE = "refine-instructions";
 
     public InstructionRefinementService(WebClient.Builder webClientBuilder,
                                          GeminiApiKeyResolver apiKeyResolver,
-                                         ObjectMapper objectMapper) {
+                                         ObjectMapper objectMapper,
+                                         MeterRegistry meterRegistry) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper == null ? new ObjectMapper() : objectMapper.copy();
+        this.meterRegistry = meterRegistry;
     }
 
     /**
@@ -64,6 +72,22 @@ public class InstructionRefinementService {
      * returns an empty refinements list so callers can degrade gracefully.
      */
     public InstructionRefinementResponse refineInstructions(InstructionRefinementRequest request) {
+        long start = System.currentTimeMillis();
+        try {
+            meterRegistry.counter("ai.suggestion.requests", ENDPOINT_TAG, ENDPOINT_VALUE).increment();
+            InstructionRefinementResponse result = doRefineInstructions(request);
+            return result;
+        } catch (Exception e) {
+            meterRegistry.counter("ai.suggestion.errors", ENDPOINT_TAG, ENDPOINT_VALUE).increment();
+            log.error("Unhandled error in refineInstructions: {}", e.getMessage(), e);
+            return new InstructionRefinementResponse(List.of());
+        } finally {
+            meterRegistry.timer("ai.suggestion.latency", ENDPOINT_TAG, ENDPOINT_VALUE)
+                    .record(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private InstructionRefinementResponse doRefineInstructions(InstructionRefinementRequest request) {
         if (request == null || request.getInstructions() == null || request.getInstructions().isEmpty()) {
             return new InstructionRefinementResponse(List.of());
         }

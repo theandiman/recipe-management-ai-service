@@ -22,7 +22,7 @@ class FieldSuggestionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FieldSuggestionService(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+        service = new FieldSuggestionService(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
     }
 
     // -------------------------------------------------------------------------

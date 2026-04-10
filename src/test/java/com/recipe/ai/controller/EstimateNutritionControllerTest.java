@@ -63,7 +63,7 @@ class EstimateNutritionControllerTest {
 
     static class NoOpFieldSuggestionService extends FieldSuggestionService {
         NoOpFieldSuggestionService() {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
         @Override
         public FieldSuggestionsResponse suggestFields(FieldSuggestionRequest request) {
@@ -73,7 +73,7 @@ class EstimateNutritionControllerTest {
 
     static class NoOpInstructionRefinementService extends InstructionRefinementService {
         NoOpInstructionRefinementService() {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
         @Override
         public InstructionRefinementResponse refineInstructions(InstructionRefinementRequest request) {
@@ -83,7 +83,7 @@ class EstimateNutritionControllerTest {
 
     static class NoOpIngredientNormalizationService extends IngredientNormalizationService {
         NoOpIngredientNormalizationService() {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
         @Override
         public IngredientNormalizationResponse normalizeIngredients(IngredientNormalizationRequest request) {
