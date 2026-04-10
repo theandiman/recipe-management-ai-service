@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recipe.ai.model.FieldSuggestion;
 import com.recipe.ai.model.FieldSuggestionRequest;
 import com.recipe.ai.model.FieldSuggestionsResponse;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service that calls the Gemini API to suggest values for missing or
@@ -36,13 +38,19 @@ public class FieldSuggestionService {
     private final WebClient.Builder webClientBuilder;
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
+
+    private static final String ENDPOINT_TAG = "endpoint";
+    private static final String ENDPOINT_VALUE = "suggest-fields";
 
     public FieldSuggestionService(WebClient.Builder webClientBuilder,
                                    GeminiApiKeyResolver apiKeyResolver,
-                                   ObjectMapper objectMapper) {
+                                   ObjectMapper objectMapper,
+                                   MeterRegistry meterRegistry) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper == null ? new ObjectMapper() : objectMapper.copy();
+        this.meterRegistry = meterRegistry;
     }
 
     /**
@@ -51,6 +59,25 @@ public class FieldSuggestionService {
      * suggestions list so callers can degrade gracefully.
      */
     public FieldSuggestionsResponse suggestFields(FieldSuggestionRequest request) {
+        long start = System.currentTimeMillis();
+        try {
+            meterRegistry.counter("ai.suggestion.requests", ENDPOINT_TAG, ENDPOINT_VALUE).increment();
+            FieldSuggestionsResponse result = doSuggestFields(request);
+            meterRegistry.counter("ai.suggestion.acceptance",
+                    ENDPOINT_TAG, ENDPOINT_VALUE,
+                    "count", String.valueOf(result.getSuggestions().size())).increment();
+            return result;
+        } catch (Exception e) {
+            meterRegistry.counter("ai.suggestion.errors", ENDPOINT_TAG, ENDPOINT_VALUE).increment();
+            log.error("Unhandled error in suggestFields: {}", e.getMessage(), e);
+            return new FieldSuggestionsResponse(List.of());
+        } finally {
+            meterRegistry.timer("ai.suggestion.latency", ENDPOINT_TAG, ENDPOINT_VALUE)
+                    .record(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private FieldSuggestionsResponse doSuggestFields(FieldSuggestionRequest request) {
         if (request == null) {
             return new FieldSuggestionsResponse(List.of());
         }

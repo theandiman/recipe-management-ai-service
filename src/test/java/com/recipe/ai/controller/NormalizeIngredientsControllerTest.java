@@ -50,7 +50,7 @@ class NormalizeIngredientsControllerTest {
     static class StubIngredientNormalizationService extends IngredientNormalizationService {
         private final IngredientNormalizationResponse stubResponse;
         StubIngredientNormalizationService(IngredientNormalizationResponse stubResponse) {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
             this.stubResponse = stubResponse;
         }
         @Override
@@ -61,7 +61,7 @@ class NormalizeIngredientsControllerTest {
 
     static class ThrowingIngredientNormalizationService extends IngredientNormalizationService {
         ThrowingIngredientNormalizationService() {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
         @Override
         public IngredientNormalizationResponse normalizeIngredients(IngredientNormalizationRequest request) {
@@ -77,7 +77,7 @@ class NormalizeIngredientsControllerTest {
 
     static class NoOpFieldSuggestionService extends FieldSuggestionService {
         NoOpFieldSuggestionService() {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
         @Override
         public FieldSuggestionsResponse suggestFields(FieldSuggestionRequest request) {
@@ -87,7 +87,7 @@ class NormalizeIngredientsControllerTest {
 
     static class NoOpInstructionRefinementService extends InstructionRefinementService {
         NoOpInstructionRefinementService() {
-            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+            super(WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper(), new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         }
         @Override
         public InstructionRefinementResponse refineInstructions(InstructionRefinementRequest request) {

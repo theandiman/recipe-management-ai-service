@@ -32,7 +32,8 @@ class InstructionRefinementServiceTest {
         service = new InstructionRefinementService(
             WebClient.builder(),
             new GeminiApiKeyResolver(),
-            new ObjectMapper()
+            new ObjectMapper(),
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry()
         );
     }
 
