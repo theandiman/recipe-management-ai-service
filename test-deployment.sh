@@ -132,6 +132,9 @@ if [ "$openapi_status" = "200" ]; then
     openapi_body=$(cat "$openapi_tmpfile")
     test_openapi_path_exists "$openapi_body" "/api/recipes/generate" "OpenAPI includes /api/recipes/generate"
     test_openapi_path_exists "$openapi_body" "/api/recipes/suggest-fields" "OpenAPI includes /api/recipes/suggest-fields"
+    test_openapi_path_exists "$openapi_body" "/api/recipes/refine-instructions" "OpenAPI includes /api/recipes/refine-instructions"
+    test_openapi_path_exists "$openapi_body" "/api/recipes/normalize-ingredients" "OpenAPI includes /api/recipes/normalize-ingredients"
+    test_openapi_path_exists "$openapi_body" "/api/recipes/estimate-nutrition" "OpenAPI includes /api/recipes/estimate-nutrition"
 else
     echo -e "${RED}✗ FAILED${NC} (HTTP $openapi_status)"
     ((TESTS_FAILED++))
