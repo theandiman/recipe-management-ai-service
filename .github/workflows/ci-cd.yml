@@ -21,9 +21,71 @@ jobs:
       actions: write
       packages: read
 
+  deploy-auth-precheck:
+    name: Deploy Auth Precheck
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Validate deploy secrets format
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${GCP_PROJECT_ID:-}" ]]; then
+            echo "::error::Missing required secret: GCP_PROJECT_ID"
+            exit 1
+          fi
+
+          if [[ -z "${GCP_SA_KEY:-}" ]]; then
+            echo "::error::Missing required secret: GCP_SA_KEY"
+            exit 1
+          fi
+
+          sa_file="$(mktemp)"
+          trap 'rm -f "$sa_file"' EXIT
+          printf '%s' "$GCP_SA_KEY" > "$sa_file"
+
+          python - "$sa_file" <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          try:
+              with open(path, 'r', encoding='utf-8') as f:
+                  payload = json.load(f)
+          except Exception as exc:
+              print(f"::error::GCP_SA_KEY is not valid JSON: {exc}")
+              sys.exit(1)
+
+          required_fields = (
+              "type",
+              "project_id",
+              "private_key_id",
+              "private_key",
+              "client_email",
+              "token_uri",
+          )
+          missing = [field for field in required_fields if not payload.get(field)]
+          if missing:
+              print("::error::GCP_SA_KEY is missing required fields: " + ", ".join(missing))
+              sys.exit(1)
+
+          if payload.get("type") != "service_account":
+              print("::error::GCP_SA_KEY must be a service account JSON key")
+              sys.exit(1)
+
+          print("Deploy auth precheck passed.")
+          PY
+
   cd:
     name: Deploy
-    needs: ci
+    needs: [ci, deploy-auth-precheck]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@2d6c963fd364bc373af4c91fdba3cd47b9996258
     permissions:
