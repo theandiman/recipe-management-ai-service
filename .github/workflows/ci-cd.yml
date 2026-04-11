@@ -29,10 +29,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Validate deploy secrets format
+      - name: Validate deploy WIF secrets
         env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
         shell: bash
         run: |
           set -euo pipefail
@@ -42,46 +43,27 @@ jobs:
             exit 1
           fi
 
-          if [[ -z "${GCP_SA_KEY:-}" ]]; then
-            echo "::error::Missing required secret: GCP_SA_KEY"
+          if [[ -z "${GCP_WORKLOAD_IDENTITY_PROVIDER:-}" ]]; then
+            echo "::error::Missing required secret: GCP_WORKLOAD_IDENTITY_PROVIDER"
             exit 1
           fi
 
-          sa_file="$(mktemp)"
-          trap 'rm -f "$sa_file"' EXIT
-          printf '%s' "$GCP_SA_KEY" > "$sa_file"
+          if [[ -z "${GCP_DEPLOY_SA:-}" ]]; then
+            echo "::error::Missing required secret: GCP_DEPLOY_SA"
+            exit 1
+          fi
 
-          python - "$sa_file" <<'PY'
-          import json
-          import sys
+          if [[ ! "${GCP_WORKLOAD_IDENTITY_PROVIDER}" =~ ^projects/[0-9]+/locations/global/workloadIdentityPools/.+/providers/.+$ ]]; then
+            echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER must match projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>"
+            exit 1
+          fi
 
-          path = sys.argv[1]
-          try:
-              with open(path, 'r', encoding='utf-8') as f:
-                  payload = json.load(f)
-          except Exception as exc:
-              print(f"::error::GCP_SA_KEY is not valid JSON: {exc}")
-              sys.exit(1)
+          if [[ ! "${GCP_DEPLOY_SA}" =~ @.+\.iam\.gserviceaccount\.com$ ]]; then
+            echo "::error::GCP_DEPLOY_SA must be a valid Google service account email"
+            exit 1
+          fi
 
-          required_fields = (
-              "type",
-              "project_id",
-              "private_key_id",
-              "private_key",
-              "client_email",
-              "token_uri",
-          )
-          missing = [field for field in required_fields if not payload.get(field)]
-          if missing:
-              print("::error::GCP_SA_KEY is missing required fields: " + ", ".join(missing))
-              sys.exit(1)
-
-          if payload.get("type") != "service_account":
-              print("::error::GCP_SA_KEY must be a service account JSON key")
-              sys.exit(1)
-
-          print("Deploy auth precheck passed.")
-          PY
+          echo "Deploy auth precheck passed."
 
   cd:
     name: Deploy
@@ -95,6 +77,9 @@ jobs:
     with:
       service_name: recipe-ai-service
       artifact_registry_repository: recipe-ai
+      use_wif: true
     secrets:
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
+      GIT_PAT: ${{ secrets.GIT_PAT }}
