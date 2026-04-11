@@ -78,8 +78,4 @@ jobs:
       service_name: recipe-ai-service
       artifact_registry_repository: recipe-ai
       use_wif: true
-    secrets:
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
-      GIT_PAT: ${{ secrets.GIT_PAT }}
+    secrets: inherit
