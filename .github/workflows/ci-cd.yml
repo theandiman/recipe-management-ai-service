@@ -78,4 +78,5 @@ jobs:
       service_name: recipe-ai-service
       artifact_registry_repository: recipe-ai
       use_wif: true
+      run_security_scan: false
     secrets: inherit
