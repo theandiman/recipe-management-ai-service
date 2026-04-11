@@ -17,7 +17,7 @@ public class RecipeServiceImageParseTest {
         ObjectMapper om = new ObjectMapper();
         // instantiate a minimal WebClient.Builder using the factory method
         org.springframework.web.reactive.function.client.WebClient.Builder builder = org.springframework.web.reactive.function.client.WebClient.builder();
-        RecipeService svc = new RecipeService(builder, om);
+        RecipeService svc = new RecipeService(builder, om, new AISuggestionValidator());
 
     // Load a stable test fixture packaged with the tests (no reliance on /tmp)
     Path p = Path.of("src/test/resources/fixtures/gemini_image_direct_sample.json");
@@ -56,7 +56,7 @@ public class RecipeServiceImageParseTest {
         Map<?,?> part0 = (Map<?,?>) parts.get(0);
         Object inline = part0.get("inlineData");
 
-        RecipeService svc = new RecipeService(null, new ObjectMapper());
+        RecipeService svc = new RecipeService(null, new ObjectMapper(), new AISuggestionValidator());
         java.lang.reflect.Method m = RecipeService.class.getDeclaredMethod("tryExtractBase64FromInline", Object.class);
         m.setAccessible(true);
         Object res = m.invoke(svc, inline);

@@ -1,6 +1,19 @@
 package com.recipe.ai.controller;
 
+import com.recipe.ai.model.FieldSuggestionRequest;
+import com.recipe.ai.model.FieldSuggestionsResponse;
+import com.recipe.ai.model.IngredientNormalizationRequest;
+import com.recipe.ai.model.IngredientNormalizationResponse;
+import com.recipe.ai.model.InstructionRefinementRequest;
+import com.recipe.ai.model.InstructionRefinementResponse;
+import com.recipe.ai.model.NutritionEstimateRequest;
+import com.recipe.ai.model.NutritionEstimateResponse;
+import com.recipe.ai.service.FieldSuggestionService;
+import com.recipe.ai.service.IngredientNormalizationService;
+import com.recipe.ai.service.InstructionRefinementService;
+import com.recipe.ai.service.NutritionEstimateService;
 import com.recipe.ai.service.RecipeService;
+import com.recipe.ai.service.AISuggestionValidationException;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
@@ -8,61 +21,63 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * REST Controller to expose the AI recipe generation endpoint.
- * REST endpoint for recipe generation requests.
+ * REST Controller to expose AI recipe endpoints.
  */
 @RestController
 @RequestMapping("/api/recipes")
-// Allow CORS from local dev origins if needed during development
 @CrossOrigin
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final FieldSuggestionService fieldSuggestionService;
+    private final InstructionRefinementService instructionRefinementService;
+    private final IngredientNormalizationService ingredientNormalizationService;
+    private final NutritionEstimateService nutritionEstimateService;
     private static final Logger log = LoggerFactory.getLogger(RecipeController.class);
 
-    public RecipeController(RecipeService recipeService) {
+    public RecipeController(RecipeService recipeService,
+                            FieldSuggestionService fieldSuggestionService,
+                            InstructionRefinementService instructionRefinementService,
+                            IngredientNormalizationService ingredientNormalizationService,
+                            NutritionEstimateService nutritionEstimateService) {
         this.recipeService = recipeService;
+        this.fieldSuggestionService = fieldSuggestionService;
+        this.instructionRefinementService = instructionRefinementService;
+        this.ingredientNormalizationService = ingredientNormalizationService;
+        this.nutritionEstimateService = nutritionEstimateService;
     }
 
-    /**
-     * Handles the POST request to generate a recipe.
-     * Accepts a RecipeGenerationRequest DTO for type-safe input handling.
-     *
-     * @param request The recipe generation request DTO
-    * @return The generated shared Recipe, or an error response
-     */
     @PostMapping("/generate")
-    public ResponseEntity<Recipe> generateRecipe(@RequestBody RecipeGenerationRequest request) {
+    public ResponseEntity<Object> generateRecipe(@RequestBody RecipeGenerationRequest request) {
         try {
             Recipe recipe = recipeService.generateRecipeModel(request);
-            
             if (recipe != null) {
                 return new ResponseEntity<>(recipe, HttpStatus.OK);
             } else {
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
+        } catch (AISuggestionValidationException e) {
+            log.warn("AI suggestion failed schema validation: {}", e.getViolations());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "AI suggestion failed validation", "violations", e.getViolations()));
         } catch (Exception e) {
             log.error("Error generating recipe: {}", e.getMessage(), e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * POST /api/recipes/image/generate
-     * Accepts an ImageGenerationRequest DTO that can contain either a simple prompt
-     * or a full recipe context for richer image generation.
-     */
     @PostMapping("/image/generate")
     public ResponseEntity<Map<String, Object>> generateImage(@RequestBody ImageGenerationRequest request,
                                                              @RequestParam(name = "forceCurl", required = false, defaultValue = "false") boolean forceCurl) {
         try {
-            log.info("Image generation request received - hasRecipe: {}, hasPrompt: {}", 
-                    request.getRecipe() != null, 
+            log.info("Image generation request received - hasRecipe: {}, hasPrompt: {}",
+                    request.getRecipe() != null,
                     request.getPrompt() != null && !request.getPrompt().isBlank());
             if (request.getRecipe() != null) {
                 log.info("Recipe context: name='{}', ingredients={}", 
@@ -74,6 +89,82 @@ public class RecipeController {
         } catch (Exception e) {
             log.error("Error generating image: {}", e.getMessage(), e);
             return new ResponseEntity<>(Map.of("status", "failed", "errorMessage", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * POST /api/recipes/suggest-fields
+     */
+    @PostMapping("/suggest-fields")
+    public ResponseEntity<FieldSuggestionsResponse> suggestFields(@RequestBody FieldSuggestionRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            FieldSuggestionsResponse response = fieldSuggestionService.suggestFields(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("suggest-fields: returned {} suggestion(s) in {}ms",
+                    response.getSuggestions().size(), latencyMs);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error in suggest-fields: {}", e.getMessage(), e);
+            return new ResponseEntity<>(new FieldSuggestionsResponse(List.of()), HttpStatus.OK);
+        }
+    }
+
+    /**
+     * POST /api/recipes/refine-instructions
+     */
+    @PostMapping("/refine-instructions")
+    public ResponseEntity<InstructionRefinementResponse> refineInstructions(
+            @RequestBody InstructionRefinementRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            InstructionRefinementResponse response = instructionRefinementService.refineInstructions(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("refine-instructions: returned {} refinement(s) in {}ms",
+                    response.getRefinements().size(), latencyMs);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error in refine-instructions: {}", e.getMessage(), e);
+            return new ResponseEntity<>(new InstructionRefinementResponse(List.of()), HttpStatus.OK);
+        }
+    }
+
+    /**
+     * POST /api/recipes/normalize-ingredients
+     * Detects ambiguous ingredient lines and returns normalization suggestions.
+     */
+    @PostMapping("/normalize-ingredients")
+    public ResponseEntity<IngredientNormalizationResponse> normalizeIngredients(
+            @RequestBody IngredientNormalizationRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            IngredientNormalizationResponse response = ingredientNormalizationService.normalizeIngredients(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("normalize-ingredients: returned {} normalization(s) in {}ms",
+                    response.getNormalizations().size(), latencyMs);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error in normalize-ingredients: {}", e.getMessage(), e);
+            return new ResponseEntity<>(new IngredientNormalizationResponse(List.of()), HttpStatus.OK);
+        }
+    }
+
+    /**
+     * POST /api/recipes/estimate-nutrition
+     * Estimates nutritional values for a recipe based on its ingredients.
+     */
+    @PostMapping("/estimate-nutrition")
+    public ResponseEntity<NutritionEstimateResponse> estimateNutrition(
+            @RequestBody NutritionEstimateRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            NutritionEstimateResponse response = nutritionEstimateService.estimateNutrition(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("estimate-nutrition: completed in {}ms", latencyMs);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error in estimate-nutrition: {}", e.getMessage(), e);
+            return ResponseEntity.ok(new NutritionEstimateResponse(null, null));
         }
     }
 }

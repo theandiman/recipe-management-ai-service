@@ -37,6 +37,33 @@ echo ""
 TESTS_PASSED=0
 TESTS_FAILED=0
 
+# Function to verify an OpenAPI path exists in /v3/api-docs
+test_openapi_path_exists() {
+    local api_docs_json=$1
+    local path_to_check=$2
+    local description=$3
+
+    echo -n "Testing: $description... "
+
+    if [ "$JQ_AVAILABLE" = true ]; then
+        if echo "$api_docs_json" | jq -e --arg path "$path_to_check" '.paths[$path] != null' > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ PASSED${NC} (path present)"
+            ((TESTS_PASSED++))
+        else
+            echo -e "${RED}✗ FAILED${NC} (missing path: $path_to_check)"
+            ((TESTS_FAILED++))
+        fi
+    else
+        if echo "$api_docs_json" | grep -q "\"$path_to_check\""; then
+            echo -e "${GREEN}✓ PASSED${NC} (path present)"
+            ((TESTS_PASSED++))
+        else
+            echo -e "${RED}✗ FAILED${NC} (missing path: $path_to_check)"
+            ((TESTS_FAILED++))
+        fi
+    fi
+}
+
 # Function to test endpoint with response validation
 test_endpoint_with_response() {
     local endpoint=$1
@@ -95,6 +122,24 @@ fi
 
 # Test 3: OpenAPI spec endpoint
 test_endpoint_with_response "/v3/api-docs" "200" "OpenAPI specification endpoint" "true" || true
+
+# Test 3b: Validate critical AI routes are present in OpenAPI docs
+echo -n "Fetching OpenAPI spec for route validation... "
+openapi_tmpfile=$(mktemp)
+openapi_status=$(curl -s -o "$openapi_tmpfile" -w "%{http_code}" --connect-timeout 5 --max-time 10 "$SERVICE_URL/v3/api-docs")
+if [ "$openapi_status" = "200" ]; then
+    echo -e "${GREEN}✓ OK${NC}"
+    openapi_body=$(cat "$openapi_tmpfile")
+    test_openapi_path_exists "$openapi_body" "/api/recipes/generate" "OpenAPI includes /api/recipes/generate"
+    test_openapi_path_exists "$openapi_body" "/api/recipes/suggest-fields" "OpenAPI includes /api/recipes/suggest-fields"
+    test_openapi_path_exists "$openapi_body" "/api/recipes/refine-instructions" "OpenAPI includes /api/recipes/refine-instructions"
+    test_openapi_path_exists "$openapi_body" "/api/recipes/normalize-ingredients" "OpenAPI includes /api/recipes/normalize-ingredients"
+    test_openapi_path_exists "$openapi_body" "/api/recipes/estimate-nutrition" "OpenAPI includes /api/recipes/estimate-nutrition"
+else
+    echo -e "${RED}✗ FAILED${NC} (HTTP $openapi_status)"
+    ((TESTS_FAILED++))
+fi
+rm -f "$openapi_tmpfile"
 
 # Test 4: Protected endpoint without auth (should return 401 or 403)
 # Note: AI service may have different auth patterns - adjust endpoint as needed

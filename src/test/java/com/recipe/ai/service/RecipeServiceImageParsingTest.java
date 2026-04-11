@@ -21,7 +21,7 @@ class RecipeServiceImageParsingTest {
         Map<?, ?> resp = om.readValue(json, Map.class);
 
         // Create the service with a real WebClient.Builder and ObjectMapper — we won't perform network calls in this test.
-        RecipeService svc = new RecipeService(WebClient.builder(), om);
+        RecipeService svc = new RecipeService(WebClient.builder(), om, new AISuggestionValidator());
 
         // Use reflection to call the private recursiveFindBase64AndMime method
         java.lang.reflect.Method m = RecipeService.class.getDeclaredMethod("recursiveFindBase64AndMime", Object.class);
