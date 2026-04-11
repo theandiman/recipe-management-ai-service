@@ -66,11 +66,14 @@ public class SecurityConfig {
 
                     // Security headers for baseline web security checks
                     .headers(headers -> headers
-                        .httpStrictTransportSecurity(hsts -> hsts
-                            .includeSubDomains(true)
-                            .maxAgeInSeconds(31536000))
                         .contentSecurityPolicy(csp -> csp
                             .policyDirectives("default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                            "Strict-Transport-Security",
+                            "max-age=31536000; includeSubDomains"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                            "Cross-Origin-Resource-Policy",
+                            "same-origin"))
                         .addHeaderWriter(new StaticHeadersWriter(
                             "Permissions-Policy",
                             "geolocation=(), microphone=(), camera=()")))
