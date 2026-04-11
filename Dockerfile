@@ -16,9 +16,14 @@ RUN apt-get update && apt-get install -y wget ca-certificates && \
     [ -s opentelemetry-javaagent.jar ] && echo "✅ OpenTelemetry agent downloaded successfully" || (echo "❌ Failed to download OpenTelemetry agent" && exit 1) && \
     apt-get remove -y wget ca-certificates && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy jar and set ownership to non-root user
-COPY target/*.jar /home/appuser/app.jar
-RUN chown appuser:appuser /home/appuser/app.jar /home/appuser/opentelemetry-javaagent.jar && \
+# Copy build output and resolve application jar regardless of extraction path
+COPY . /tmp/build-context
+RUN set -e && \
+    jar_path="$(find /tmp/build-context -maxdepth 4 -type f -name 'recipe-generator-service-*.jar' | head -n 1)" && \
+    [ -n "$jar_path" ] && \
+    cp "$jar_path" /home/appuser/app.jar && \
+    rm -rf /tmp/build-context && \
+    chown appuser:appuser /home/appuser/app.jar /home/appuser/opentelemetry-javaagent.jar && \
     chmod 500 /home/appuser/app.jar && \
     chmod 400 /home/appuser/opentelemetry-javaagent.jar
 
