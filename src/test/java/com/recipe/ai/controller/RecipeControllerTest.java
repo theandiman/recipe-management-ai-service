@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 public class RecipeControllerTest {
 
@@ -127,9 +128,37 @@ public class RecipeControllerTest {
         ResponseEntity<?> resp = controller.generateRecipe(request);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(resp.getBody()).isNotNull();
         assertThat(resp.getBody()).isInstanceOf(Recipe.class);
-        assertThat(((Recipe) resp.getBody()).getRecipeName()).isEqualTo("Test Recipe");
+        Recipe body = (Recipe) resp.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getRecipeName()).isEqualTo("Test Recipe");
+    }
+
+    @Test
+    void generateRecipe_returnsBadGatewayWhenServiceReturnsNull() {
+        RecipeController failingController = new RecipeController(
+            new TestRecipeService() {
+                @Override
+                public Recipe generateRecipeModel(RecipeGenerationRequest request) {
+                    return null;
+                }
+            },
+            new TestFieldSuggestionService(),
+            new TestInstructionRefinementService(),
+            new NoOpIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
+        );
+        RecipeGenerationRequest request = new RecipeGenerationRequest();
+        request.setPrompt("test");
+        request.setPantryItems(List.of("egg"));
+
+        ResponseEntity<?> resp = failingController.generateRecipe(request);
+
+        assertThat(resp.getStatusCode().value()).isEqualTo(502);
+        assertThat(resp.getBody()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) resp.getBody();
+        assertThat(body).contains(entry("message", "AI service returned an invalid recipe response."));
     }
 
     @Test

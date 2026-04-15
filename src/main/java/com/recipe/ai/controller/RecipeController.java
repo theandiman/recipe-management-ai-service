@@ -54,13 +54,16 @@ public class RecipeController {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<Object> generateRecipe(@RequestBody RecipeGenerationRequest request) {
+    public ResponseEntity<?> generateRecipe(@RequestBody RecipeGenerationRequest request) {
         try {
             Recipe recipe = recipeService.generateRecipeModel(request);
             if (recipe != null) {
                 return new ResponseEntity<>(recipe, HttpStatus.OK);
             } else {
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+                return new ResponseEntity<>(
+                    Map.of("message", "AI service returned an invalid recipe response."),
+                    HttpStatus.BAD_GATEWAY
+                );
             }
         } catch (AISuggestionValidationException e) {
             log.warn("AI suggestion failed schema validation: {}", e.getViolations());

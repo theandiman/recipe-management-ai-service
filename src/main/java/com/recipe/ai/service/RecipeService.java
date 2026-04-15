@@ -461,7 +461,7 @@ public class RecipeService {
                 if (content != null) {
                     List<Part> parts = content.getParts();
                     if (parts != null && !parts.isEmpty() && parts.get(0).getText() != null) {
-                        String recipeJson = parts.get(0).getText(); // Final structured JSON recipe string
+                        String recipeJson = normalizeRecipeJson(parts.get(0).getText()); // Final structured JSON recipe string
                         try {
                             // parse and run safety checks before any further processing
                             @SuppressWarnings("unchecked")
@@ -658,6 +658,35 @@ public class RecipeService {
             log.error("Failed to parse recipe JSON into DTO: {}", e.getMessage(), e);
             return null;
         }
+    }
+
+    private String normalizeRecipeJson(String candidate) {
+        if (candidate == null || candidate.isBlank()) {
+            return candidate;
+        }
+
+        String trimmed = candidate.trim();
+        if (trimmed.startsWith("```")) {
+            int firstNewline = trimmed.indexOf('\n');
+            if (firstNewline >= 0) {
+                trimmed = trimmed.substring(firstNewline + 1).trim();
+            }
+            if (trimmed.endsWith("```")) {
+                trimmed = trimmed.substring(0, trimmed.length() - 3).trim();
+            }
+        }
+
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            return trimmed;
+        }
+
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return trimmed.substring(start, end + 1).trim();
+        }
+
+        return trimmed;
     }
 
     private String createMockRecipe(List<String> pantryItems) {
