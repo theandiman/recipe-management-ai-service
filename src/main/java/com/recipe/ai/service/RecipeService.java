@@ -637,7 +637,7 @@ public class RecipeService {
 
         // Parse JSON string into shared Recipe model
         try {
-            return objectMapper.readValue(normalizeRecipeJson(recipeJson), Recipe.class);
+            return objectMapper.readValue(recipeJson, Recipe.class);
         } catch (Exception e) {
             log.error("Failed to parse recipe JSON into DTO: {}", e.getMessage(), e);
             return null;
@@ -645,8 +645,8 @@ public class RecipeService {
     }
 
     String normalizeRecipeJson(String candidate) {
-        if (candidate == null) {
-            return null;
+        if (candidate == null || candidate.isBlank()) {
+            return candidate;
         }
 
         String trimmed = candidate.trim();
@@ -655,32 +655,17 @@ public class RecipeService {
             trimmed = trimmed.replaceFirst("\\s*```$", "");
         }
 
-        if (looksLikeJsonObject(trimmed)) {
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
             return trimmed;
         }
 
         int start = trimmed.indexOf('{');
         int end = trimmed.lastIndexOf('}');
         if (start >= 0 && end > start) {
-            String extracted = trimmed.substring(start, end + 1).trim();
-            if (looksLikeJsonObject(extracted)) {
-                return extracted;
-            }
+            return trimmed.substring(start, end + 1).trim();
         }
 
         return trimmed;
-    }
-
-    private boolean looksLikeJsonObject(String value) {
-        if (value == null || value.isBlank()) {
-            return false;
-        }
-
-        try {
-            return objectMapper.readTree(value).isObject();
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     private String createMockRecipe(List<String> pantryItems) {
