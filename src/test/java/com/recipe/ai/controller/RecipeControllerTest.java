@@ -57,16 +57,18 @@ public class RecipeControllerTest {
     }
 
     @Test
-    void generateRecipe_allowsEmptyPrompt_andDelegatesToService() throws Exception {
+    void generateRecipe_allowsEmptyPrompt_andDelegatesToService() {
         RecipeGenerationRequest request = new RecipeGenerationRequest();
         request.setPrompt("");
         request.setPantryItems(List.of());
         
-    ResponseEntity<Recipe> resp = controller.generateRecipe(request);
+        ResponseEntity<?> resp = controller.generateRecipe(request);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(resp.getBody()).isNotNull();
-    assertThat(resp.getBody().getRecipeName()).isEqualTo("Test Recipe");
+        assertThat(resp.getBody()).isInstanceOf(Recipe.class);
+        Recipe body = (Recipe) resp.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getRecipeName()).isEqualTo("Test Recipe");
     }
 
     @Test

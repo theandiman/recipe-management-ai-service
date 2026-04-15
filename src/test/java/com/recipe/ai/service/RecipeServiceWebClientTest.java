@@ -1,6 +1,7 @@
 package com.recipe.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -104,7 +105,11 @@ public class RecipeServiceWebClientTest {
         keyField.set(service, "TEST_API_KEY");
 
         String out = service.generateRecipe("Make a test", List.of("egg"));
-        assertTrue(out.contains("\"recipeName\":\"Fence Test Recipe\""));
-        assertTrue(out.contains("\"ingredients\":[\"egg\"]"));
+        assertTrue(!out.contains("```"));
+
+        JsonNode json = new ObjectMapper().readTree(out);
+        assertEquals("Fence Test Recipe", json.get("recipeName").asText());
+        assertEquals(1, json.get("ingredients").size());
+        assertEquals("egg", json.get("ingredients").get(0).asText());
     }
 }

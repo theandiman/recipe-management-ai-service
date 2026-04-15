@@ -644,7 +644,7 @@ public class RecipeService {
         }
     }
 
-    String normalizeRecipeJson(String candidate) {
+    private String normalizeRecipeJson(String candidate) {
         if (candidate == null || candidate.isBlank()) {
             return candidate;
         }
