@@ -12,7 +12,7 @@ public class RecipeServiceTimeConstraintTest {
 
     @Test
     public void testEstimatedTimeViolation() throws Exception {
-        RecipeService svc = new RecipeService(null, new ObjectMapper());
+        RecipeService svc = new RecipeService(null, new ObjectMapper(), new AISuggestionValidator());
 
         Map<String, Object> recipe = Map.of(
             "recipeName", "Slow Stew",
@@ -27,7 +27,7 @@ public class RecipeServiceTimeConstraintTest {
 
     @Test
     public void testPrepTimeStringParsingViolation() throws Exception {
-        RecipeService svc = new RecipeService(null, new ObjectMapper());
+        RecipeService svc = new RecipeService(null, new ObjectMapper(), new AISuggestionValidator());
 
         Map<String, Object> recipe = Map.of(
             "recipeName", "Baked Casserole",

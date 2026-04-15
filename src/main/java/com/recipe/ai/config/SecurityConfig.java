@@ -9,6 +9,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -45,6 +46,9 @@ public class SecurityConfig {
 
                 // Configure authorization rules
                 .authorizeHttpRequests(authz -> authz
+                    // Allow service root endpoint for baseline scanners
+                    .requestMatchers("/").permitAll()
+
                         // Allow health checks without authentication (for load balancers)
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 
@@ -59,6 +63,20 @@ public class SecurityConfig {
 
                         // Deny all other requests
                         .anyRequest().denyAll())
+
+                    // Security headers for baseline web security checks
+                    .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp
+                            .policyDirectives("default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                            "Strict-Transport-Security",
+                            "max-age=31536000; includeSubDomains"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                            "Cross-Origin-Resource-Policy",
+                            "same-origin"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                            "Permissions-Policy",
+                            "geolocation=(), microphone=(), camera=()")))
 
                 // Add Firebase authentication filter before Spring Security's default filter
                 .addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

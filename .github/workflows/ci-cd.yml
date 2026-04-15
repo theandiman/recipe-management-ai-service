@@ -15,17 +15,61 @@ concurrency:
 jobs:
   ci:
     name: Build and Test
-    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@2d6c963fd364bc373af4c91fdba3cd47b9996258
+    uses: theandiman/recipe-management/.github/workflows/backend-java-ci.yml@c1380eefe2a455912b57e310bf6453a156c55af2
     permissions:
       contents: read
       actions: write
       packages: read
 
-  cd:
-    name: Deploy
+  deploy-auth-precheck:
+    name: Deploy Auth Precheck
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@2d6c963fd364bc373af4c91fdba3cd47b9996258
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Validate deploy WIF secrets
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${GCP_PROJECT_ID:-}" ]]; then
+            echo "::error::Missing required secret: GCP_PROJECT_ID"
+            exit 1
+          fi
+
+          if [[ -z "${GCP_WORKLOAD_IDENTITY_PROVIDER:-}" ]]; then
+            echo "::error::Missing required secret: GCP_WORKLOAD_IDENTITY_PROVIDER"
+            exit 1
+          fi
+
+          if [[ -z "${GCP_DEPLOY_SA:-}" ]]; then
+            echo "::error::Missing required secret: GCP_DEPLOY_SA"
+            exit 1
+          fi
+
+          if [[ ! "${GCP_WORKLOAD_IDENTITY_PROVIDER}" =~ ^projects/[0-9]+/locations/global/workloadIdentityPools/.+/providers/.+$ ]]; then
+            echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER must match projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>"
+            exit 1
+          fi
+
+          if [[ ! "${GCP_DEPLOY_SA}" =~ @.+\.iam\.gserviceaccount\.com$ ]]; then
+            echo "::error::GCP_DEPLOY_SA must be a valid Google service account email"
+            exit 1
+          fi
+
+          echo "Deploy auth precheck passed."
+
+  cd:
+    name: Deploy
+    needs: [ci, deploy-auth-precheck]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@c1380eefe2a455912b57e310bf6453a156c55af2
     permissions:
       contents: write
       actions: write
@@ -33,6 +77,10 @@ jobs:
     with:
       service_name: recipe-ai-service
       artifact_registry_repository: recipe-ai
+      use_wif: true
+      zap_rules: "10049\tIGNORE\t(Non-Storable Content - expected for auth-protected endpoints returning 401/403)"
     secrets:
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
+      GIT_PAT: ${{ secrets.GIT_PAT }}
