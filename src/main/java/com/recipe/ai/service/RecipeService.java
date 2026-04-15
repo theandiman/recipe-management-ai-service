@@ -651,8 +651,13 @@ public class RecipeService {
 
         String trimmed = candidate.trim();
         if (trimmed.startsWith("```")) {
-            trimmed = trimmed.replaceFirst("^```(?:json)?\\s*", "");
-            trimmed = trimmed.replaceFirst("\\s*```$", "");
+            int firstNewline = trimmed.indexOf('\n');
+            if (firstNewline >= 0) {
+                trimmed = trimmed.substring(firstNewline + 1).trim();
+            }
+            if (trimmed.endsWith("```")) {
+                trimmed = trimmed.substring(0, trimmed.length() - 3).trim();
+            }
         }
 
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
