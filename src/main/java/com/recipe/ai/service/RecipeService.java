@@ -458,7 +458,7 @@ public class RecipeService {
                 if (content != null) {
                     List<Part> parts = content.getParts();
                     if (parts != null && !parts.isEmpty() && parts.get(0).getText() != null) {
-                        String recipeJson = parts.get(0).getText(); // Final structured JSON recipe string
+                        String recipeJson = normalizeRecipeJson(parts.get(0).getText()); // Final structured JSON recipe string
                         try {
                             // parse and run safety checks before any further processing
                             @SuppressWarnings("unchecked")
@@ -637,10 +637,49 @@ public class RecipeService {
 
         // Parse JSON string into shared Recipe model
         try {
-            return objectMapper.readValue(recipeJson, Recipe.class);
+            return objectMapper.readValue(normalizeRecipeJson(recipeJson), Recipe.class);
         } catch (Exception e) {
             log.error("Failed to parse recipe JSON into DTO: {}", e.getMessage(), e);
             return null;
+        }
+    }
+
+    String normalizeRecipeJson(String candidate) {
+        if (candidate == null) {
+            return null;
+        }
+
+        String trimmed = candidate.trim();
+        if (trimmed.startsWith("```")) {
+            trimmed = trimmed.replaceFirst("^```(?:json)?\\s*", "");
+            trimmed = trimmed.replaceFirst("\\s*```$", "");
+        }
+
+        if (looksLikeJsonObject(trimmed)) {
+            return trimmed;
+        }
+
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            String extracted = trimmed.substring(start, end + 1).trim();
+            if (looksLikeJsonObject(extracted)) {
+                return extracted;
+            }
+        }
+
+        return trimmed;
+    }
+
+    private boolean looksLikeJsonObject(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+
+        try {
+            return objectMapper.readTree(value).isObject();
+        } catch (Exception e) {
+            return false;
         }
     }
 

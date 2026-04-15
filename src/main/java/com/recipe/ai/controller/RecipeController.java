@@ -37,14 +37,17 @@ public class RecipeController {
     * @return The generated shared Recipe, or an error response
      */
     @PostMapping("/generate")
-    public ResponseEntity<Recipe> generateRecipe(@RequestBody RecipeGenerationRequest request) {
+    public ResponseEntity<?> generateRecipe(@RequestBody RecipeGenerationRequest request) {
         try {
             Recipe recipe = recipeService.generateRecipeModel(request);
             
             if (recipe != null) {
                 return new ResponseEntity<>(recipe, HttpStatus.OK);
             } else {
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+                return new ResponseEntity<>(
+                    Map.of("message", "AI service returned an invalid recipe response."),
+                    HttpStatus.BAD_GATEWAY
+                );
             }
         } catch (Exception e) {
             log.error("Error generating recipe: {}", e.getMessage(), e);
