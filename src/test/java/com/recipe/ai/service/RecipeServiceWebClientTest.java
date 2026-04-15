@@ -69,8 +69,20 @@ public class RecipeServiceWebClientTest {
               "instructions": ["Cook it."],
               "servings": 1
             }
-            """.trim().replace("\"", "\\\"");
-        String sample = "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"```json\\n" + recipeJson + "\\n```\"}]}}]}";
+            """.trim();
+        String sample = new ObjectMapper().writeValueAsString(
+            java.util.Map.of(
+                "candidates", java.util.List.of(
+                    java.util.Map.of(
+                        "content", java.util.Map.of(
+                            "parts", java.util.List.of(
+                                java.util.Map.of("text", "```json\n" + recipeJson + "\n```")
+                            )
+                        )
+                    )
+                )
+            )
+        );
 
         org.springframework.web.reactive.function.client.ExchangeFunction exchange = req -> {
             org.springframework.web.reactive.function.client.ClientResponse resp =
