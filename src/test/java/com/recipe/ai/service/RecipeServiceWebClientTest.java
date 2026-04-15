@@ -90,7 +90,7 @@ public class RecipeServiceWebClientTest {
         Mockito.when(builder.defaultHeader(Mockito.any(), Mockito.any())).thenReturn(builder);
         Mockito.when(builder.build()).thenReturn(webClient);
 
-        RecipeService service = new RecipeService(builder, new ObjectMapper());
+        RecipeService service = new RecipeService(builder, new ObjectMapper(), new AISuggestionValidator());
 
         java.lang.reflect.Field urlField = RecipeService.class.getDeclaredField("geminiApiUrl");
         urlField.setAccessible(true);
