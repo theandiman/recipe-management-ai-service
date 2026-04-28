@@ -54,7 +54,7 @@
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
-                <version>42.7.10</version>
+                <version>42.7.11</version>
             </dependency>
             <!-- Security overrides: pin embedded Tomcat to the patched release recommended by the advisory
                  (CVE-2025-48989 recommends 10.1.44). Using the first patched Tomcat minimizes the need for a
