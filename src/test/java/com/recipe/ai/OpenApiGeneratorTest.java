@@ -3,7 +3,6 @@ package com.recipe.ai;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,9 +16,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Generates an OpenAPI spec for documentation purposes.
- * Disabled because springdoc-openapi is not yet fully compatible with Spring Boot 4.
+ * Runs during {@code mvn verify} and writes the spec to {@code target/openapi.json},
+ * which is then picked up by the swagger-ui GitHub Actions workflow.
  */
-@Disabled("springdoc-openapi incompatible with Spring Boot 4 — WebMvcProperties moved")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @TestPropertySource(properties = "auth.enabled=false")
 class OpenApiGeneratorTest {
