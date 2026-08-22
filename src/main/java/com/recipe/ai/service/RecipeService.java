@@ -70,6 +70,7 @@ public class RecipeService {
     private static final String PREP_TIME = "prepTime";
     private static final String COOK_TIME = "cookTime";
     private static final String ESTIMATED_TIME = "estimatedTime";
+    private static final String TOTAL_TIME = "totalTime";
     private static final String IMAGE_GENERATION = "imageGeneration";
     private static final String STATUS = "status";
     private static final String SOURCE = "source";
@@ -515,12 +516,17 @@ public class RecipeService {
                             // 'estimatedTimeMinutes' or parsed prepTime strings.
                             List<String> timeViolations = runTimeConstraintChecks(obj, maxTotalMinutes);
                             if (timeViolations != null && !timeViolations.isEmpty()) {
-                                Map<String, Object> err = new java.util.LinkedHashMap<>();
-                                err.put("error", "constraint_violation");
-                                err.put("message", "Generated recipe violates requested time constraints.");
-                                err.put("details", Map.of("violations", timeViolations));
-                                return objectMapper.writeValueAsString(err);
+                                throw new AISuggestionValidationException(timeViolations);
                             }
+                            if (!obj.containsKey(TOTAL_TIME_MINUTES) && obj.get(ESTIMATED_TIME_MINUTES) instanceof Number estimatedMinutes) {
+                                obj.put(TOTAL_TIME_MINUTES, estimatedMinutes.intValue());
+                            }
+                            if (!obj.containsKey(TOTAL_TIME) && obj.get(ESTIMATED_TIME) instanceof String estimatedTime && !estimatedTime.isBlank()) {
+                                obj.put(TOTAL_TIME, estimatedTime);
+                            }
+                            obj.remove(ESTIMATED_TIME_MINUTES);
+                            obj.remove(ESTIMATED_TIME);
+
                             if (!obj.containsKey("imageUrl")) {
                                 String title = obj.getOrDefault("recipeName", "Recipe").toString();
                                 // Prepare imageGeneration metadata to help frontend show status/errors
@@ -582,6 +588,8 @@ public class RecipeService {
 
                                 return objectMapper.writeValueAsString(obj);
                             }
+                        } catch (AISuggestionValidationException e) {
+                            throw e;
                         } catch (Exception e) {
                             // if parsing fails, just return the original recipe JSON
                             log.debug("Failed to parse or inject imageUrl into recipe JSON: {}", e.getMessage());
