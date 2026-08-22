@@ -585,9 +585,8 @@ public class RecipeService {
                                 }
 
                                 obj.put(IMAGE_GENERATION, imageGeneration);
-
-                                return objectMapper.writeValueAsString(obj);
                             }
+                            return objectMapper.writeValueAsString(obj);
                         } catch (AISuggestionValidationException e) {
                             throw e;
                         } catch (Exception e) {
