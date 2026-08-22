@@ -588,6 +588,8 @@ public class RecipeService {
 
                                 return objectMapper.writeValueAsString(obj);
                             }
+                        } catch (AISuggestionValidationException e) {
+                            throw e;
                         } catch (Exception e) {
                             // if parsing fails, just return the original recipe JSON
                             log.debug("Failed to parse or inject imageUrl into recipe JSON: {}", e.getMessage());
