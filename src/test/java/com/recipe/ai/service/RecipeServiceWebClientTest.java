@@ -135,7 +135,8 @@ public class RecipeServiceWebClientTest {
               "instructions": ["Cook slowly."],
               "servings": 4,
               "estimatedTimeMinutes": 120,
-              "estimatedTime": "2 hours"
+              "estimatedTime": "2 hours",
+              "imageUrl": "https://example.com/stew.jpg"
             }
             """.trim();
         String sample = new ObjectMapper().writeValueAsString(
@@ -193,5 +194,6 @@ public class RecipeServiceWebClientTest {
         assertEquals("Slow Stew", recipe.getRecipeName());
         assertEquals(120, recipe.getTotalTimeMinutes());
         assertEquals("2 hours", recipe.getTotalTime());
+        assertEquals("https://example.com/stew.jpg", recipe.getImageUrl());
     }
 }
