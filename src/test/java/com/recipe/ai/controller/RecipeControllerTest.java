@@ -162,6 +162,36 @@ public class RecipeControllerTest {
     }
 
     @Test
+    void generateRecipe_returnsBadRequestWhenServiceThrowsValidationException() {
+        RecipeController failingController = new RecipeController(
+            new TestRecipeService() {
+                @Override
+                public Recipe generateRecipeModel(RecipeGenerationRequest request) {
+                    throw new com.recipe.ai.service.AISuggestionValidationException(
+                        List.of("Estimated total time 120 minutes exceeds maximum allowed 30 minutes")
+                    );
+                }
+            },
+            new TestFieldSuggestionService(),
+            new TestInstructionRefinementService(),
+            new NoOpIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
+        );
+        RecipeGenerationRequest request = new RecipeGenerationRequest();
+        request.setPrompt("test");
+        request.setPantryItems(List.of("egg"));
+
+        ResponseEntity<?> resp = failingController.generateRecipe(request);
+
+        assertThat(resp.getStatusCode().value()).isEqualTo(400);
+        assertThat(resp.getBody()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) resp.getBody();
+        assertThat(body).contains(entry("error", "AI suggestion failed validation"));
+        assertThat(body).containsKey("violations");
+    }
+
+    @Test
     void generateImage_allowsEmptyPrompt_andDelegatesToService() {
         ImageGenerationRequest request = new ImageGenerationRequest();
         request.setPrompt("");

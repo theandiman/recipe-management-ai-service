@@ -8,6 +8,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -123,5 +124,74 @@ public class RecipeServiceWebClientTest {
         assertEquals("Fence Test Recipe", json.get("recipeName").asText());
         assertEquals(1, json.get("ingredients").size());
         assertEquals("egg", json.get("ingredients").get(0).asText());
+    }
+
+    @Test
+    public void testGenerateRecipeModel_mapsEstimatedTimeAliasesIntoSharedRecipeModel() throws Exception {
+        String recipeJson = """
+            {
+              "recipeName": "Slow Stew",
+              "ingredients": ["beef"],
+              "instructions": ["Cook slowly."],
+              "servings": 4,
+              "estimatedTimeMinutes": 120,
+              "estimatedTime": "2 hours"
+            }
+            """.trim();
+        String sample = new ObjectMapper().writeValueAsString(
+            Map.of(
+                "candidates", List.of(
+                    Map.of(
+                        "content", Map.of(
+                            "parts", List.of(
+                                Map.of("text", recipeJson)
+                            )
+                        )
+                    )
+                )
+            )
+        );
+
+        org.springframework.web.reactive.function.client.ExchangeFunction exchange = req -> {
+            org.springframework.web.reactive.function.client.ClientResponse resp =
+                org.springframework.web.reactive.function.client.ClientResponse
+                    .create(org.springframework.http.HttpStatus.OK)
+                    .header("Content-Type", "application/json")
+                    .body(sample)
+                    .build();
+            return Mono.just(resp);
+        };
+
+        WebClient webClient = WebClient.builder().exchangeFunction(exchange).build();
+        WebClient.Builder builder = Mockito.mock(WebClient.Builder.class);
+        Mockito.when(builder.baseUrl(Mockito.any())).thenReturn(builder);
+        Mockito.when(builder.clientConnector(Mockito.any(org.springframework.http.client.reactive.ClientHttpConnector.class))).thenReturn(builder);
+        Mockito.when(builder.exchangeStrategies(Mockito.any(org.springframework.web.reactive.function.client.ExchangeStrategies.class))).thenReturn(builder);
+        Mockito.when(builder.defaultHeader(Mockito.any(), Mockito.any())).thenReturn(builder);
+        Mockito.when(builder.build()).thenReturn(webClient);
+
+        RecipeService service = new RecipeService(builder, new ObjectMapper(), new AISuggestionValidator());
+
+        java.lang.reflect.Field urlField = RecipeService.class.getDeclaredField("geminiApiUrl");
+        urlField.setAccessible(true);
+        urlField.set(service, "https://example.com/mock");
+
+        java.lang.reflect.Field promptField = RecipeService.class.getDeclaredField("systemPrompt");
+        promptField.setAccessible(true);
+        promptField.set(service, "You are a test chef.");
+
+        java.lang.reflect.Field keyField = RecipeService.class.getDeclaredField("geminiApiKey");
+        keyField.setAccessible(true);
+        keyField.set(service, "TEST_API_KEY");
+
+        com.recipe.ai.model.RecipeGenerationRequest request = new com.recipe.ai.model.RecipeGenerationRequest();
+        request.setPrompt("Make dinner");
+        request.setPantryItems(List.of("beef"));
+
+        com.recipe.shared.model.Recipe recipe = service.generateRecipeModel(request);
+
+        assertEquals("Slow Stew", recipe.getRecipeName());
+        assertEquals(120, recipe.getTotalTimeMinutes());
+        assertEquals("2 hours", recipe.getTotalTime());
     }
 }
