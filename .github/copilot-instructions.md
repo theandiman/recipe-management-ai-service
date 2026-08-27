@@ -193,11 +193,8 @@ export HONEYCOMB_API_KEY=your_honeycomb_key
 6. Create pull request for review
 
 ### Version Management
-- Semantic versioning: `MAJOR.MINOR.PATCH`
-- Main branch uses release versions (e.g., `1.0.1`)
-- Feature branches use SNAPSHOT versions
-- Version bumping is automated in CI/CD
-- Use `./version.sh` for manual version operations
+- Git SHA (`short-sha`) versioning is derived automatically in CI/CD from `${GITHUB_SHA::7}`
+- Artifacts and container images are tagged with the short Git SHA
 
 ### CI/CD Pipeline
 - Automated builds on all branches

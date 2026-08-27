@@ -57,9 +57,8 @@ The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) delegates to shared 
 - Only one build runs on main branch at a time
 - Prevents race conditions and deployment conflicts
 
-### ✅ Automated Versioning
-- Feature branches: SNAPSHOT versions
-- Main branch: Release versions with automatic increment (derived without mutating tracked files during CI)
+### ✅ Git SHA Versioning
+- Feature & main branches: Derived from short Git SHA (`${GITHUB_SHA::7}`)
 
 ### ✅ Comprehensive Testing
 - Unit tests
