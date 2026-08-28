@@ -20,6 +20,7 @@ import com.recipe.ai.service.AISuggestionValidationException;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -45,6 +46,7 @@ public class RecipeController {
     private final SearchAiService searchAiService;
     private static final Logger log = LoggerFactory.getLogger(RecipeController.class);
 
+    @Autowired
     public RecipeController(RecipeService recipeService,
                             FieldSuggestionService fieldSuggestionService,
                             InstructionRefinementService instructionRefinementService,
@@ -57,6 +59,14 @@ public class RecipeController {
         this.ingredientNormalizationService = ingredientNormalizationService;
         this.nutritionEstimateService = nutritionEstimateService;
         this.searchAiService = searchAiService;
+    }
+
+    public RecipeController(RecipeService recipeService,
+                            FieldSuggestionService fieldSuggestionService,
+                            InstructionRefinementService instructionRefinementService,
+                            IngredientNormalizationService ingredientNormalizationService,
+                            NutritionEstimateService nutritionEstimateService) {
+        this(recipeService, fieldSuggestionService, instructionRefinementService, ingredientNormalizationService, nutritionEstimateService, null);
     }
 
     @PostMapping("/generate")
