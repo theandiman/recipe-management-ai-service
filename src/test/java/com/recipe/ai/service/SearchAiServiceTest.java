@@ -90,4 +90,28 @@ class SearchAiServiceTest {
         assertEquals(500, response.getMaxCalories());
         assertEquals("Filtered for quick 30-min pasta under 500 kcal.", response.getExplanation());
     }
+
+    @Test
+    void testParseGeminiResponse_SanitizesAttributeKeywords() {
+        String mockResponse = """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "{\\"queryKeywords\\": \\"quick\\", \\"dietaryTags\\": [\\"Quick & Easy\\"], \\"explanation\\": \\"Filtered for Quick & Easy recipes.\\"}"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """;
+
+        AiSearchParseResponse response = searchAiService.parseGeminiResponse(mockResponse, "quick");
+        assertNotNull(response);
+        assertEquals("", response.getQueryKeywords());
+        assertEquals(List.of("Quick & Easy"), response.getDietaryTags());
+    }
 }

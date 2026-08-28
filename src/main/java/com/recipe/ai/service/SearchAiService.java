@@ -110,15 +110,15 @@ public class SearchAiService {
     }
 
     String buildPrompt(String userPrompt) {
-        return "You are an expert culinary search intent parser. Analyze the user's natural language search request: \"" 
+        return "You are a precise culinary search intent parser. Analyze the user's search request: \"" 
                + userPrompt + "\"\n\n"
-               + "Extract structured search parameters:\n"
-               + "1. queryKeywords: Concise core recipe search terms (e.g. \"pasta\", \"chicken curry\").\n"
-               + "2. dietaryTags: Array of relevant tags if mentioned or strongly implied, choosing from: [Quick & Easy, Vegetarian, Vegan, Gluten-Free, Low Carb, High Protein, Dairy-Free, Keto, Breakfast, Lunch, Dinner, Dessert].\n"
-               + "3. maxPrepTime: Maximum prep/cook time in minutes as integer, if specified or implied (e.g. 15, 30, 45, 60), else null.\n"
-               + "4. maxCalories: Maximum calorie limit per serving as integer, if specified (e.g. 400, 500, 600), else null.\n"
-               + "5. explanation: A brief 1-sentence friendly explanation of the parsed search intent.\n\n"
-               + "Return ONLY JSON matching the schema.";
+               + "RULES:\n"
+               + "1. queryKeywords: Core ingredient or dish name ONLY (e.g. \"pasta\", \"chicken\"). Return empty string \"\" if the request only describes attributes like \"quick\", \"healthy\", \"low carb\", \"vegetarian\", or prep times!\n"
+               + "2. dietaryTags: Extract ONLY tags explicitly requested or directly implied, choosing from: [Quick & Easy, Vegetarian, Vegan, Gluten-Free, Low Carb, High Protein, Dairy-Free, Keto, Breakfast, Lunch, Dinner, Dessert]. Return empty [] if none.\n"
+               + "3. maxPrepTime: Extract maximum minutes as integer ONLY if explicitly stated (e.g. \"under 30 mins\" -> 30). Leave as null if unspecified.\n"
+               + "4. maxCalories: Extract calorie limit per serving as integer ONLY if explicitly specified. Leave as null if unspecified.\n"
+               + "5. explanation: Brief 1-sentence friendly explanation of the parsed search intent.\n\n"
+               + "CRITICAL: Be minimal and conservative. Do NOT add unnecessary filters or infer time/calorie constraints that were not explicitly stated.";
     }
 
     private String buildResponseSchema() {
@@ -167,7 +167,7 @@ public class SearchAiService {
             String text = (String) parts.get(0).get("text");
 
             Map<String, Object> parsed = objectMapper.readValue(text, new TypeReference<Map<String, Object>>() {});
-            String queryKeywords = (String) parsed.getOrDefault("queryKeywords", defaultPrompt);
+            String queryKeywords = (String) parsed.getOrDefault("queryKeywords", "");
             List<String> dietaryTags = (List<String>) parsed.getOrDefault("dietaryTags", List.of());
             Number maxPrepTimeNum = (Number) parsed.get("maxPrepTime");
             Number maxCaloriesNum = (Number) parsed.get("maxCalories");
@@ -176,7 +176,17 @@ public class SearchAiService {
             Integer maxPrepTime = maxPrepTimeNum != null ? maxPrepTimeNum.intValue() : null;
             Integer maxCalories = maxCaloriesNum != null ? maxCaloriesNum.intValue() : null;
 
-            return new AiSearchParseResponse(queryKeywords, dietaryTags != null ? dietaryTags : List.of(), maxPrepTime, maxCalories, explanation);
+            // Sanitize queryKeywords: if it's redundant with an extracted dietary tag or attribute word, clear it
+            if (queryKeywords != null && !queryKeywords.isBlank()) {
+                String kwLower = queryKeywords.trim().toLowerCase();
+                boolean matchesAttribute = List.of("quick", "easy", "quick & easy", "healthy", "low carb", "vegetarian", "vegan", "keto", "dinner", "lunch", "breakfast")
+                        .contains(kwLower);
+                if (matchesAttribute || (dietaryTags != null && dietaryTags.stream().anyMatch(t -> t.toLowerCase().contains(kwLower)))) {
+                    queryKeywords = "";
+                }
+            }
+
+            return new AiSearchParseResponse(queryKeywords != null ? queryKeywords : "", dietaryTags != null ? dietaryTags : List.of(), maxPrepTime, maxCalories, explanation);
         } catch (Exception e) {
             log.error("Failed to parse Gemini search intent response: {}", e.getMessage(), e);
             return new AiSearchParseResponse(defaultPrompt, List.of(), null, null, "Standard fallback search.");
