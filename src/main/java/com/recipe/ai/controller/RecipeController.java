@@ -1,5 +1,7 @@
 package com.recipe.ai.controller;
 
+import com.recipe.ai.model.AiSearchParseRequest;
+import com.recipe.ai.model.AiSearchParseResponse;
 import com.recipe.ai.model.FieldSuggestionRequest;
 import com.recipe.ai.model.FieldSuggestionsResponse;
 import com.recipe.ai.model.IngredientNormalizationRequest;
@@ -13,6 +15,7 @@ import com.recipe.ai.service.IngredientNormalizationService;
 import com.recipe.ai.service.InstructionRefinementService;
 import com.recipe.ai.service.NutritionEstimateService;
 import com.recipe.ai.service.RecipeService;
+import com.recipe.ai.service.SearchAiService;
 import com.recipe.ai.service.AISuggestionValidationException;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
@@ -39,18 +42,21 @@ public class RecipeController {
     private final InstructionRefinementService instructionRefinementService;
     private final IngredientNormalizationService ingredientNormalizationService;
     private final NutritionEstimateService nutritionEstimateService;
+    private final SearchAiService searchAiService;
     private static final Logger log = LoggerFactory.getLogger(RecipeController.class);
 
     public RecipeController(RecipeService recipeService,
                             FieldSuggestionService fieldSuggestionService,
                             InstructionRefinementService instructionRefinementService,
                             IngredientNormalizationService ingredientNormalizationService,
-                            NutritionEstimateService nutritionEstimateService) {
+                            NutritionEstimateService nutritionEstimateService,
+                            SearchAiService searchAiService) {
         this.recipeService = recipeService;
         this.fieldSuggestionService = fieldSuggestionService;
         this.instructionRefinementService = instructionRefinementService;
         this.ingredientNormalizationService = ingredientNormalizationService;
         this.nutritionEstimateService = nutritionEstimateService;
+        this.searchAiService = searchAiService;
     }
 
     @PostMapping("/generate")
@@ -168,6 +174,25 @@ public class RecipeController {
         } catch (Exception e) {
             log.error("Error in estimate-nutrition: {}", e.getMessage(), e);
             return ResponseEntity.ok(new NutritionEstimateResponse(null, null));
+        }
+    }
+
+    /**
+     * POST /api/recipes/search/parse-intent
+     * Parses natural language search requests into structured filters using Gemini AI.
+     */
+    @PostMapping("/search/parse-intent")
+    public ResponseEntity<AiSearchParseResponse> parseSearchIntent(@RequestBody AiSearchParseRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            AiSearchParseResponse response = searchAiService.parseSearchIntent(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("parse-search-intent: completed in {}ms", latencyMs);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error in parse-search-intent: {}", e.getMessage(), e);
+            String prompt = request != null ? request.getPrompt() : "";
+            return ResponseEntity.ok(new AiSearchParseResponse(prompt, List.of(), null, null, "Standard fallback search."));
         }
     }
 }
