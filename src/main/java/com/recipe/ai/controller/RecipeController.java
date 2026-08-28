@@ -205,4 +205,23 @@ public class RecipeController {
             return ResponseEntity.ok(new AiSearchParseResponse(prompt, List.of(), null, null, "Standard fallback search."));
         }
     }
+
+    /**
+     * POST /api/recipes/search/query
+     * Directly evaluates and ranks candidate recipes against a natural language search query using Gemini AI.
+     */
+    @PostMapping("/search/query")
+    public ResponseEntity<com.recipe.ai.model.AiSearchQueryResponse> querySearch(
+            @RequestBody com.recipe.ai.model.AiSearchQueryRequest request) {
+        try {
+            long start = System.currentTimeMillis();
+            com.recipe.ai.model.AiSearchQueryResponse response = searchAiService.queryRecipes(request);
+            long latencyMs = System.currentTimeMillis() - start;
+            log.info("search/query: returned {} match(es) in {}ms", response.getMatches().size(), latencyMs);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error in search/query: {}", e.getMessage(), e);
+            return ResponseEntity.ok(new com.recipe.ai.model.AiSearchQueryResponse(List.of(), null));
+        }
+    }
 }
