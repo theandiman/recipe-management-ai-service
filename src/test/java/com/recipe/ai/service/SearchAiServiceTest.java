@@ -114,4 +114,43 @@ class SearchAiServiceTest {
         assertEquals("", response.getQueryKeywords());
         assertEquals(List.of("Quick & Easy"), response.getDietaryTags());
     }
+
+    @Test
+    void testQueryRecipes_EmptyCandidateList_ReturnsSuggestedIdea() {
+        com.recipe.ai.model.AiSearchQueryResponse response = searchAiService.queryRecipes(
+            new com.recipe.ai.model.AiSearchQueryRequest("cozy winter soup", List.of())
+        );
+        assertNotNull(response);
+        assertTrue(response.getMatches().isEmpty());
+        assertNotNull(response.getSuggestedIdea());
+        assertEquals("cozy winter soup", response.getSuggestedIdea().getTitle());
+    }
+
+    @Test
+    void testParseQueryGeminiResponse_ValidJson() {
+        String mockResponse = """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "{\\"matches\\": [{\\"recipeId\\": \\"rec-1\\", \\"matchScore\\": 0.95, \\"matchReason\\": \\"Warm pasta dish for winter.\\"}], \\"suggestedIdea\\": {\\"title\\": \\"Creamy Tomato Soup\\", \\"prompt\\": \\"Create tomato soup\\", \\"reason\\": \\"Nice winter soup idea.\\"}}"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """;
+
+        com.recipe.ai.model.AiSearchQueryResponse response = searchAiService.parseQueryGeminiResponse(mockResponse, "cozy winter soup");
+        assertNotNull(response);
+        assertEquals(1, response.getMatches().size());
+        assertEquals("rec-1", response.getMatches().get(0).getRecipeId());
+        assertEquals(0.95, response.getMatches().get(0).getMatchScore());
+        assertEquals("Warm pasta dish for winter.", response.getMatches().get(0).getMatchReason());
+        assertNotNull(response.getSuggestedIdea());
+        assertEquals("Creamy Tomato Soup", response.getSuggestedIdea().getTitle());
+    }
 }
