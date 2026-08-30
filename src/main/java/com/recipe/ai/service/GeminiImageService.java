@@ -176,7 +176,6 @@ public class GeminiImageService {
             for (int attempt = 1; attempt <= MAX_WEBCLIENT_ATTEMPTS; attempt++) {
                 WebClient client = webClientBuilder
                     .exchangeStrategies(strategies)
-                    .clientConnector(new ReactorClientHttpConnector(HttpClient.create().wiretap(true)))
                     .baseUrl(imageEndpoint)
                     .defaultHeader("x-goog-api-key", effectiveApiKey)
                     .defaultHeader("Accept", "application/json")
