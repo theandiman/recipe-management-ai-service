@@ -359,7 +359,6 @@ public class RecipeService {
             for (int attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     WebClient client = webClientBuilder
-                        .clientConnector(new ReactorClientHttpConnector(HttpClient.create().wiretap(true)))
                         .baseUrl(geminiApiUrl)
                         .defaultHeader("x-goog-api-key", effectiveApiKey)
                         .build();
@@ -989,7 +988,6 @@ public class RecipeService {
         for (int attempt = 1; attempt <= MAX_WEBCLIENT_ATTEMPTS; attempt++) {
             WebClient client = webClientBuilder
                 .exchangeStrategies(strategies)
-                .clientConnector(new ReactorClientHttpConnector(HttpClient.create().wiretap(true)))
                 .baseUrl(imageEndpoint)
                 .defaultHeader(API_KEY_HEADER, effectiveApiKey)
                 .defaultHeader("Accept", "application/json")

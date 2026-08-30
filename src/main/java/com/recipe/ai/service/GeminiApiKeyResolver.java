@@ -26,25 +26,36 @@ public class GeminiApiKeyResolver {
     @Value("${gemini.api.key:YOUR_SECURE_API_KEY_HERE}")
     private String configuredApiKey;
 
+    private volatile String cachedEffectiveKey;
+
     /**
-     * Resolves the effective API key from all available sources.
+     * Resolves the effective API key from all available sources (cached after first resolution).
      * @return The resolved API key, or the configured property value if no other source is found
      */
     public String resolveEffectiveApiKey() {
-        String apiKeyFromSysProp = System.getProperty("GEMINI_API_KEY");
-        String apiKeyFromEnv = System.getenv("GEMINI_API_KEY");
-        
-        if (apiKeyFromSysProp != null && !apiKeyFromSysProp.isBlank()) {
-            return apiKeyFromSysProp;
-        } else if (apiKeyFromEnv != null && !apiKeyFromEnv.isBlank()) {
-            return apiKeyFromEnv;
-        } else {
-            // If not set via system property or environment, try a local .env file (common in dev setups)
-            String envFileKey = readApiKeyFromEnvFile();
-            if (envFileKey != null) {
-                return envFileKey;
+        if (cachedEffectiveKey != null) {
+            return cachedEffectiveKey;
+        }
+        synchronized (this) {
+            if (cachedEffectiveKey != null) {
+                return cachedEffectiveKey;
             }
-            return configuredApiKey;
+            String apiKeyFromSysProp = System.getProperty("GEMINI_API_KEY");
+            String apiKeyFromEnv = System.getenv("GEMINI_API_KEY");
+            
+            if (apiKeyFromSysProp != null && !apiKeyFromSysProp.isBlank()) {
+                cachedEffectiveKey = apiKeyFromSysProp;
+            } else if (apiKeyFromEnv != null && !apiKeyFromEnv.isBlank()) {
+                cachedEffectiveKey = apiKeyFromEnv;
+            } else {
+                String envFileKey = readApiKeyFromEnvFile();
+                if (envFileKey != null) {
+                    cachedEffectiveKey = envFileKey;
+                } else {
+                    cachedEffectiveKey = configuredApiKey;
+                }
+            }
+            return cachedEffectiveKey;
         }
     }
 
