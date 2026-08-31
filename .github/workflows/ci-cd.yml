@@ -20,11 +20,16 @@ jobs:
       contents: read
       actions: write
       packages: read
+    with:
+      run_sonar: true
+      sonar_project_key: theandiman_recipe-management-ai-service
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   deploy-auth-precheck:
     name: Deploy Auth Precheck
     needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -68,7 +73,7 @@ jobs:
   cd:
     name: Deploy
     needs: [ci, deploy-auth-precheck]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     uses: theandiman/recipe-management/.github/workflows/backend-java-cloud-run-cd.yml@main
     permissions:
       contents: write
