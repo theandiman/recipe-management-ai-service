@@ -105,7 +105,8 @@ public class SearchAiService {
             "generationConfig", Map.of(
                 "responseMimeType", "application/json",
                 "responseSchema", parseSchema(jsonSchema)
-            )
+            ),
+            "safetySettings", AISuggestionValidator.DEFAULT_SAFETY_SETTINGS
         );
 
         try {
@@ -272,7 +273,8 @@ public class SearchAiService {
             "generationConfig", Map.of(
                 "responseMimeType", "application/json",
                 "responseSchema", parseSchema(jsonSchema)
-            )
+            ),
+            "safetySettings", AISuggestionValidator.DEFAULT_SAFETY_SETTINGS
         );
 
         try {

@@ -115,7 +115,8 @@ public class FieldSuggestionService {
             "generationConfig", Map.of(
                 "responseMimeType", "application/json",
                 "responseSchema", objectMapper.convertValue(parseSchema(jsonSchema), Object.class)
-            )
+            ),
+            "safetySettings", AISuggestionValidator.DEFAULT_SAFETY_SETTINGS
         );
 
         try {

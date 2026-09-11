@@ -16,8 +16,11 @@ import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import reactor.netty.http.client.HttpClient;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.Base64;
 import java.net.URLEncoder;
 import java.net.URI;
@@ -300,25 +303,95 @@ public class RecipeService {
      * @param maxTotalMinutes Maximum total cooking time in minutes, or null for no time constraint
      * @return JSON string representing the generated recipe, or null on failure
      */
+    private static final Set<String> ALLOWED_DIETARY_PREFERENCES = Set.of(
+        "vegan", "vegetarian", "gluten-free", "dairy-free", "keto", "paleo", "low-carb",
+        "high-protein", "pescatarian", "halal", "kosher", "nut-free", "egg-free",
+        "soy-free", "sugar-free", "mediterranean", "whole30", "quick & easy"
+    );
+
+    private static final Pattern SAFE_CONSTRAINT_PATTERN = Pattern.compile("^[a-zA-Z0-9 ,()'-]{1,50}$");
+    private static final Pattern SAFE_PANTRY_PATTERN = Pattern.compile("^[a-zA-Z0-9 ,()'-]{1,100}$");
+
+    List<String> sanitizeAndFilterDietaryPreferences(List<String> rawPreferences) {
+        if (rawPreferences == null) return List.of();
+        List<String> valid = new ArrayList<>();
+        for (String p : rawPreferences) {
+            if (p == null || p.isBlank()) continue;
+            String normalized = p.trim().toLowerCase().replace('_', '-');
+            if (ALLOWED_DIETARY_PREFERENCES.contains(normalized)) {
+                valid.add(normalized);
+            } else {
+                log.warn("Discarding unsupported or suspicious dietary preference: '{}'", p);
+            }
+        }
+        return valid;
+    }
+
+    List<String> sanitizeAndFilterAllergies(List<String> rawAllergies) {
+        if (rawAllergies == null) return List.of();
+        List<String> valid = new ArrayList<>();
+        for (String a : rawAllergies) {
+            if (a == null || a.isBlank()) continue;
+            String trimmed = a.trim();
+            if (trimmed.length() <= 50 && SAFE_CONSTRAINT_PATTERN.matcher(trimmed).matches()) {
+                valid.add(trimmed);
+            } else {
+                log.warn("Discarding invalid or suspicious allergy input: '{}'", a);
+            }
+        }
+        return valid;
+    }
+
+    List<String> sanitizeAndFilterPantryItems(List<String> rawPantryItems) {
+        if (rawPantryItems == null) return List.of();
+        List<String> valid = new ArrayList<>();
+        for (String p : rawPantryItems) {
+            if (p == null || p.isBlank()) continue;
+            String trimmed = p.trim();
+            if (trimmed.length() <= 100 && SAFE_PANTRY_PATTERN.matcher(trimmed).matches()) {
+                valid.add(trimmed);
+            } else {
+                log.warn("Discarding invalid or suspicious pantry item: '{}'", p);
+            }
+        }
+        return valid;
+    }
+
+    /**
+     * Generates a recipe with dietary preferences, allergen constraints, and time limit.
+     * This is the primary implementation method that all other overloads delegate to.
+     * 
+     * @param prompt The user's recipe request
+     * @param pantryItems A list of ingredients to prioritize
+     * @param units The measurement system to use (METRIC or IMPERIAL)
+     * @param dietaryPreferences List of dietary requirements (e.g., "vegan", "vegetarian", "gluten-free")
+     * @param allergies List of allergens to avoid (e.g., "peanuts", "dairy", "shellfish")
+     * @param maxTotalMinutes Maximum total cooking time in minutes, or null for no time constraint
+     * @return JSON string representing the generated recipe, or null on failure
+     */
     public String generateRecipe(String prompt, List<String> pantryItems, com.recipe.ai.model.Units units, List<String> dietaryPreferences, List<String> allergies, Integer maxTotalMinutes) {
-        String basePrompt = buildPrompt(prompt, pantryItems, units);
+        List<String> safePantry = sanitizeAndFilterPantryItems(pantryItems);
+        List<String> safeDietary = sanitizeAndFilterDietaryPreferences(dietaryPreferences);
+        List<String> safeAllergies = sanitizeAndFilterAllergies(allergies);
+
+        String basePrompt = buildPrompt(prompt, safePantry, units);
         // Append dietary and allergy constraints to the user-visible prompt so the model honors them
         StringBuilder sb = new StringBuilder(basePrompt);
-        if (dietaryPreferences != null && !dietaryPreferences.isEmpty()) {
+        if (!safeDietary.isEmpty()) {
             sb.append(" Ensure the recipe conforms to the following dietary preferences: ");
-            sb.append(String.join(", ", dietaryPreferences));
+            sb.append(String.join(", ", safeDietary));
             sb.append('.');
         }
-        if (allergies != null && !allergies.isEmpty()) {
+        if (!safeAllergies.isEmpty()) {
             sb.append(" Avoid any ingredients or common substitutes that contain: ");
-            sb.append(String.join(", ", allergies));
+            sb.append(String.join(", ", safeAllergies));
             sb.append('.');
         }
         String finalPrompt = sb.toString();
 
         // Resolve the effective API key (system property, env var, .env file, then configured property)
         String effectiveApiKey = resolveEffectiveApiKey();
-    log.info("gemini.image.enabled={} (property), effectiveApiKeyPresent={}", geminiImageEnabled, effectiveApiKey != null && !effectiveApiKey.isBlank());
+        log.info("gemini.image.enabled={} (property), effectiveApiKeyPresent={}", geminiImageEnabled, effectiveApiKey != null && !effectiveApiKey.isBlank());
 
         if (effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains(DEFAULT_API_KEY_PLACEHOLDER)) {
             log.warn("No Gemini API key configured (system prop " + GEMINI_API_KEY_ENV_VAR + ", env " + GEMINI_API_KEY_ENV_VAR + ", .env, or gemini.api.key). Calls will fail until an API key is set.");
@@ -328,14 +401,14 @@ public class RecipeService {
         // instead of attempting outbound calls (avoids repeated 403s during local development).
         if ((effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains(DEFAULT_API_KEY_PLACEHOLDER)) && !devFallback) {
             log.info("No effective Gemini API key found and " + DEV_FALLBACK + " disabled — returning development mock to avoid outbound calls.");
-            return createMockRecipe(pantryItems);
+            return createMockRecipe(safePantry);
         }
 
         // If developer fallback is explicitly enabled and no API key is present, return the local mock
         // immediately to avoid attempting outbound calls during local development.
         if (devFallback && (effectiveApiKey == null || effectiveApiKey.isBlank() || effectiveApiKey.contains(DEFAULT_API_KEY_PLACEHOLDER))) {
             log.info(DEV_FALLBACK + " enabled and no API key present — returning development mock recipe.");
-            return createMockRecipe(pantryItems);
+            return createMockRecipe(safePantry);
         }
 
         // 1. Construct the API Payload
@@ -347,7 +420,8 @@ public class RecipeService {
             "generationConfig", Map.of(
                 "responseMimeType", APPLICATION_JSON,
                 "responseSchema", RECIPE_SCHEMA
-            )
+            ),
+            "safetySettings", AISuggestionValidator.DEFAULT_SAFETY_SETTINGS
         );
 
         try {
