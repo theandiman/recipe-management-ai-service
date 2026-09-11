@@ -9,6 +9,7 @@ import com.recipe.ai.model.IngredientNormalizationResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ public class IngredientNormalizationService {
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final AISuggestionValidator aiSuggestionValidator;
 
     private static final String ENDPOINT_TAG = "endpoint";
     private static final String ENDPOINT_VALUE = "normalize-ingredients";
@@ -52,10 +54,20 @@ public class IngredientNormalizationService {
                                           GeminiApiKeyResolver apiKeyResolver,
                                           ObjectMapper objectMapper,
                                           MeterRegistry meterRegistry) {
+        this(webClientBuilder, apiKeyResolver, objectMapper, meterRegistry, new AISuggestionValidator());
+    }
+
+    @Autowired
+    public IngredientNormalizationService(WebClient.Builder webClientBuilder,
+                                          GeminiApiKeyResolver apiKeyResolver,
+                                          ObjectMapper objectMapper,
+                                          MeterRegistry meterRegistry,
+                                          AISuggestionValidator aiSuggestionValidator) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
+        this.aiSuggestionValidator = aiSuggestionValidator != null ? aiSuggestionValidator : new AISuggestionValidator();
     }
 
     /**
@@ -191,11 +203,14 @@ public class IngredientNormalizationService {
                 double confidence = item.path("confidence").asDouble(0.0);
                 if (confidence < MIN_CONFIDENCE) continue;
 
+                String normalized = aiSuggestionValidator.sanitizeText(item.path("normalized").asText(""), 500);
+                String reason = aiSuggestionValidator.sanitizeText(item.path("reason").asText(""), 500);
+
                 result.add(new IngredientNormalization(
                     idx,
                     item.path("original").asText(ingredients.get(idx)),
-                    item.path("normalized").asText(""),
-                    item.path("reason").asText(""),
+                    normalized != null ? normalized : "",
+                    reason != null ? reason : "",
                     confidence
                 ));
             }
