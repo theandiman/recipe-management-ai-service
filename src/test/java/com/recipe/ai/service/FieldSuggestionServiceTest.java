@@ -130,6 +130,22 @@ class FieldSuggestionServiceTest {
         assertThat(response.getSuggestions()).isEmpty();
     }
 
+    @Test
+    void parseGeminiResponse_maliciousHtmlAndScript_isSanitized() throws Exception {
+        String inner = "{\"suggestions\":[{" +
+            "\"field\":\"description\"," +
+            "\"suggestedValue\":\"<script>alert('XSS')</script>Hearty <b>beef</b> stew\"," +
+            "\"reason\":\"Contains <img src=x onerror=alert(1)>tasty ingredients\"" +
+            "}]}";
+        String body = buildGeminiBody(inner);
+        FieldSuggestionsResponse response = service.parseGeminiResponse(body);
+
+        assertThat(response.getSuggestions()).hasSize(1);
+        FieldSuggestion suggestion = response.getSuggestions().get(0);
+        assertThat(suggestion.getSuggestedValue()).isEqualTo("Hearty beef stew");
+        assertThat(suggestion.getReason()).isEqualTo("Contains tasty ingredients");
+    }
+
     // -------------------------------------------------------------------------
     // suggestFields — no valid API key
     // -------------------------------------------------------------------------

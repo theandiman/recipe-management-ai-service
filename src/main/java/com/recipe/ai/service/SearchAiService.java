@@ -12,6 +12,7 @@ import com.recipe.ai.model.RecipeSummaryDto;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class SearchAiService {
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final AISuggestionValidator aiSuggestionValidator;
 
     private static final String ENDPOINT_TAG = "endpoint";
     private static final String ENDPOINT_VALUE = "parse-search-intent";
@@ -44,10 +46,20 @@ public class SearchAiService {
                            GeminiApiKeyResolver apiKeyResolver,
                            ObjectMapper objectMapper,
                            MeterRegistry meterRegistry) {
+        this(webClientBuilder, apiKeyResolver, objectMapper, meterRegistry, new AISuggestionValidator());
+    }
+
+    @Autowired
+    public SearchAiService(WebClient.Builder webClientBuilder,
+                           GeminiApiKeyResolver apiKeyResolver,
+                           ObjectMapper objectMapper,
+                           MeterRegistry meterRegistry,
+                           AISuggestionValidator aiSuggestionValidator) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper == null ? new ObjectMapper() : objectMapper.copy();
         this.meterRegistry = meterRegistry;
+        this.aiSuggestionValidator = aiSuggestionValidator != null ? aiSuggestionValidator : new AISuggestionValidator();
     }
 
     public AiSearchParseResponse parseSearchIntent(AiSearchParseRequest request) {
@@ -173,11 +185,14 @@ public class SearchAiService {
             String text = (String) parts.get(0).get("text");
 
             Map<String, Object> parsed = objectMapper.readValue(text, new TypeReference<Map<String, Object>>() {});
-            String queryKeywords = (String) parsed.getOrDefault("queryKeywords", "");
-            List<String> dietaryTags = (List<String>) parsed.getOrDefault("dietaryTags", List.of());
+            String rawKeywords = (String) parsed.getOrDefault("queryKeywords", "");
+            String queryKeywords = aiSuggestionValidator.sanitizeText(rawKeywords, 200);
+            List<String> rawDietaryTags = (List<String>) parsed.getOrDefault("dietaryTags", List.of());
+            List<String> dietaryTags = aiSuggestionValidator.sanitizeList(rawDietaryTags);
             Number maxPrepTimeNum = (Number) parsed.get("maxPrepTime");
             Number maxCaloriesNum = (Number) parsed.get("maxCalories");
-            String explanation = (String) parsed.getOrDefault("explanation", "AI parsed search intent.");
+            String rawExplanation = (String) parsed.getOrDefault("explanation", "AI parsed search intent.");
+            String explanation = aiSuggestionValidator.sanitizeText(rawExplanation, 500);
 
             Integer maxPrepTime = maxPrepTimeNum != null ? maxPrepTimeNum.intValue() : null;
             Integer maxCalories = maxCaloriesNum != null ? maxCaloriesNum.intValue() : null;
@@ -365,7 +380,9 @@ public class SearchAiService {
                     Number scoreNum = (Number) m.get("matchScore");
                     String reason = (String) m.get("matchReason");
                     if (recipeId != null && scoreNum != null) {
-                        matches.add(new AiRecipeMatchDto(recipeId, scoreNum.doubleValue(), reason != null ? reason : ""));
+                        String sanitizedRecipeId = aiSuggestionValidator.sanitizeText(recipeId, 100);
+                        String sanitizedReason = reason != null ? aiSuggestionValidator.sanitizeText(reason, 500) : "";
+                        matches.add(new AiRecipeMatchDto(sanitizedRecipeId, scoreNum.doubleValue(), sanitizedReason));
                     }
                 }
             }
@@ -377,7 +394,10 @@ public class SearchAiService {
                 String prompt = (String) rawIdea.get("prompt");
                 String reason = (String) rawIdea.get("reason");
                 if (title != null && prompt != null) {
-                    suggestedIdea = new AiSuggestedIdeaDto(title, prompt, reason != null ? reason : "");
+                    String sanitizedTitle = aiSuggestionValidator.sanitizeText(title, 200);
+                    String sanitizedPrompt = aiSuggestionValidator.sanitizeText(prompt, 1000);
+                    String sanitizedReason = reason != null ? aiSuggestionValidator.sanitizeText(reason, 500) : "";
+                    suggestedIdea = new AiSuggestedIdeaDto(sanitizedTitle, sanitizedPrompt, sanitizedReason);
                 }
             }
 

@@ -8,6 +8,7 @@ import com.recipe.ai.model.FieldSuggestionsResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class FieldSuggestionService {
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final AISuggestionValidator aiSuggestionValidator;
 
     private static final String ENDPOINT_TAG = "endpoint";
     private static final String ENDPOINT_VALUE = "suggest-fields";
@@ -47,10 +49,20 @@ public class FieldSuggestionService {
                                    GeminiApiKeyResolver apiKeyResolver,
                                    ObjectMapper objectMapper,
                                    MeterRegistry meterRegistry) {
+        this(webClientBuilder, apiKeyResolver, objectMapper, meterRegistry, new AISuggestionValidator());
+    }
+
+    @Autowired
+    public FieldSuggestionService(WebClient.Builder webClientBuilder,
+                                   GeminiApiKeyResolver apiKeyResolver,
+                                   ObjectMapper objectMapper,
+                                   MeterRegistry meterRegistry,
+                                   AISuggestionValidator aiSuggestionValidator) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper == null ? new ObjectMapper() : objectMapper.copy();
         this.meterRegistry = meterRegistry;
+        this.aiSuggestionValidator = aiSuggestionValidator != null ? aiSuggestionValidator : new AISuggestionValidator();
     }
 
     /**
@@ -244,7 +256,10 @@ public class FieldSuggestionService {
                 String suggestedValue = (String) raw.get("suggestedValue");
                 String reason         = (String) raw.get("reason");
                 if (field != null && suggestedValue != null) {
-                    suggestions.add(new FieldSuggestion(field, suggestedValue, reason != null ? reason : ""));
+                    String sanitizedField = aiSuggestionValidator.sanitizeText(field, 50);
+                    String sanitizedValue = aiSuggestionValidator.sanitizeText(suggestedValue, 2000);
+                    String sanitizedReason = reason != null ? aiSuggestionValidator.sanitizeText(reason, 500) : "";
+                    suggestions.add(new FieldSuggestion(sanitizedField, sanitizedValue, sanitizedReason));
                 }
             }
             return new FieldSuggestionsResponse(suggestions);

@@ -182,7 +182,7 @@ public class AISuggestionValidator {
      * Strips HTML tags and control characters from a single text value.
      * Returns null if input is null.
      */
-    String sanitizeText(String text) {
+    public String sanitizeText(String text) {
         if (text == null) {
             return null;
         }
@@ -192,6 +192,35 @@ public class AISuggestionValidator {
         result = HTML_TAG_PATTERN.matcher(result).replaceAll("");
         result = CONTROL_CHAR_PATTERN.matcher(result).replaceAll("");
         return result;
+    }
+
+    /**
+     * Strips HTML tags, control characters, and enforces a maximum length limit.
+     */
+    public String sanitizeText(String text, int maxLength) {
+        String sanitized = sanitizeText(text);
+        if (sanitized == null) {
+            return null;
+        }
+        if (maxLength > 0 && sanitized.length() > maxLength) {
+            return sanitized.substring(0, maxLength);
+        }
+        return sanitized;
+    }
+
+    /**
+     * Sanitizes a list of strings, trimming whitespace and filtering out null or blank strings.
+     */
+    public List<String> sanitizeList(List<String> list) {
+        if (list == null) {
+            return new ArrayList<>();
+        }
+        return list.stream()
+                .filter(item -> item != null)
+                .map(this::sanitizeText)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 
     private String truncateForLog(String s, int maxLen) {

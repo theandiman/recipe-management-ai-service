@@ -8,6 +8,7 @@ import com.recipe.ai.model.InstructionRefinementResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 /**
  * Service that calls the Gemini API to refine recipe instruction steps for
@@ -39,12 +39,6 @@ public class InstructionRefinementService {
 
     private static final String API_KEY_HEADER = "x-goog-api-key";
 
-    /** Matches HTML/script tags and ASCII control chars for sanitization. */
-    private static final Pattern SCRIPT_STYLE_PATTERN =
-        Pattern.compile("<(script|style)[^>]*>[\\s\\S]*?</\\1>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]*>");
-    private static final Pattern CONTROL_CHAR_PATTERN = Pattern.compile("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]");
-
     @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent}")
     private String geminiApiUrl;
 
@@ -52,6 +46,7 @@ public class InstructionRefinementService {
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final AISuggestionValidator aiSuggestionValidator;
 
     private static final String ENDPOINT_TAG = "endpoint";
     private static final String ENDPOINT_VALUE = "refine-instructions";
@@ -60,10 +55,20 @@ public class InstructionRefinementService {
                                          GeminiApiKeyResolver apiKeyResolver,
                                          ObjectMapper objectMapper,
                                          MeterRegistry meterRegistry) {
+        this(webClientBuilder, apiKeyResolver, objectMapper, meterRegistry, new AISuggestionValidator());
+    }
+
+    @Autowired
+    public InstructionRefinementService(WebClient.Builder webClientBuilder,
+                                         GeminiApiKeyResolver apiKeyResolver,
+                                         ObjectMapper objectMapper,
+                                         MeterRegistry meterRegistry,
+                                         AISuggestionValidator aiSuggestionValidator) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper == null ? new ObjectMapper() : objectMapper.copy();
         this.meterRegistry = meterRegistry;
+        this.aiSuggestionValidator = aiSuggestionValidator != null ? aiSuggestionValidator : new AISuggestionValidator();
     }
 
     /**
@@ -162,13 +167,11 @@ public class InstructionRefinementService {
         return sb.toString();
     }
 
-    /** Sanitizes a text string by stripping HTML/script tags and control characters. */
+    /** Sanitizes a text string by stripping HTML/script tags and control characters via AISuggestionValidator. */
     String sanitize(String text) {
         if (text == null) return "";
-        String result = SCRIPT_STYLE_PATTERN.matcher(text).replaceAll("");
-        result = HTML_TAG_PATTERN.matcher(result).replaceAll("");
-        result = CONTROL_CHAR_PATTERN.matcher(result).replaceAll("");
-        return result.trim();
+        String result = aiSuggestionValidator.sanitizeText(text, 2000);
+        return result != null ? result.trim() : "";
     }
 
     InstructionRefinementResponse parseGeminiResponse(String body, List<String> originalInstructions) {

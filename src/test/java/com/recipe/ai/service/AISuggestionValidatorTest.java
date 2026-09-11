@@ -312,6 +312,40 @@ class AISuggestionValidatorTest {
         assertThat(result).isEqualTo("Chicken soup with vegetables");
     }
 
+    @Test
+    void sanitizeText_withHtmlAndScript_stripsTags() {
+        String result = validator.sanitizeText("Hello <script>alert(1)</script><b>world</b>");
+
+        assertThat(result).isEqualTo("Hello world");
+    }
+
+    @Test
+    void sanitizeText_withMaxLength_truncatesAndSanitizes() {
+        String result = validator.sanitizeText("<b>Super</b> long text here", 10);
+
+        assertThat(result).isEqualTo("Super long");
+    }
+
+    @Test
+    void sanitizeText_nullOrEmpty_returnsAsIs() {
+        assertThat(validator.sanitizeText(null)).isNull();
+        assertThat(validator.sanitizeText("")).isEmpty();
+        assertThat(validator.sanitizeText(null, 50)).isNull();
+    }
+
+    @Test
+    void sanitizeList_sanitizesElementsAndFiltersBlanks() {
+        List<String> input = List.of("  <b>Tag1</b>  ", "<script>alert('xss')</script>", "Tag 2");
+        List<String> sanitized = validator.sanitizeList(input);
+
+        assertThat(sanitized).containsExactly("Tag1", "Tag 2");
+    }
+
+    @Test
+    void sanitizeList_nullList_returnsEmptyList() {
+        assertThat(validator.sanitizeList(null)).isEmpty();
+    }
+
     // -----------------------------------------------------------------------
     // Multiple violations in one recipe
     // -----------------------------------------------------------------------

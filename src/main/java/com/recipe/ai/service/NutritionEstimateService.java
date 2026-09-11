@@ -9,6 +9,7 @@ import com.recipe.ai.model.NutritionEstimateRequest;
 import com.recipe.ai.model.NutritionEstimateResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -40,13 +41,23 @@ public class NutritionEstimateService {
     private final WebClient.Builder webClientBuilder;
     private final GeminiApiKeyResolver apiKeyResolver;
     private final ObjectMapper objectMapper;
+    private final AISuggestionValidator aiSuggestionValidator;
 
     public NutritionEstimateService(WebClient.Builder webClientBuilder,
                                     GeminiApiKeyResolver apiKeyResolver,
                                     ObjectMapper objectMapper) {
+        this(webClientBuilder, apiKeyResolver, objectMapper, new AISuggestionValidator());
+    }
+
+    @Autowired
+    public NutritionEstimateService(WebClient.Builder webClientBuilder,
+                                    GeminiApiKeyResolver apiKeyResolver,
+                                    ObjectMapper objectMapper,
+                                    AISuggestionValidator aiSuggestionValidator) {
         this.webClientBuilder = webClientBuilder;
         this.apiKeyResolver = apiKeyResolver;
         this.objectMapper = objectMapper;
+        this.aiSuggestionValidator = aiSuggestionValidator != null ? aiSuggestionValidator : new AISuggestionValidator();
     }
 
     /**
@@ -189,7 +200,10 @@ public class NutritionEstimateService {
         JsonNode warningsNode = node.path("warnings");
         if (warningsNode.isArray()) {
             for (JsonNode w : warningsNode) {
-                warnings.add(w.asText());
+                String sanitized = aiSuggestionValidator.sanitizeText(w.asText(), 300);
+                if (sanitized != null && !sanitized.isBlank()) {
+                    warnings.add(sanitized);
+                }
             }
         }
         boolean isPartial = node.path("isPartial").asBoolean(false);
@@ -200,9 +214,9 @@ public class NutritionEstimateService {
     private NutrientValue parseNutrient(JsonNode node) {
         if (node == null || node.isMissingNode()) return null;
         double value = node.path("value").asDouble(0.0);
-        String unit = node.path("unit").asText("g");
+        String unit = aiSuggestionValidator.sanitizeText(node.path("unit").asText("g"), 20);
         boolean estimated = node.path("estimated").asBoolean(false);
-        return new NutrientValue(value, unit, estimated);
+        return new NutrientValue(value, unit != null ? unit : "g", estimated);
     }
 
     private Map<String, Object> parseSchema(String jsonSchema) {
