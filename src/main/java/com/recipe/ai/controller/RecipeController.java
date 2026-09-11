@@ -20,6 +20,7 @@ import com.recipe.ai.service.AISuggestionValidationException;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
+import com.recipe.ai.model.RecipeModificationRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -87,6 +88,35 @@ public class RecipeController {
                     .body(Map.of("error", "AI suggestion failed validation", "violations", e.getViolations()));
         } catch (Exception e) {
             log.error("Error generating recipe: {}", e.getMessage(), e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * POST /api/recipes/modify (alias /api/recipes/remix)
+     * Modifies an existing structured recipe with user instructions inside secure boundary tags.
+     */
+    @PostMapping({"/modify", "/remix"})
+    public ResponseEntity<?> modifyRecipe(@RequestBody RecipeModificationRequest request) {
+        try {
+            if (request == null || request.getCurrentRecipe() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "currentRecipe is required"));
+            }
+            Recipe recipe = recipeService.modifyRecipeModel(request);
+            if (recipe != null) {
+                return new ResponseEntity<>(recipe, HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(
+                    Map.of("message", "AI service returned an invalid recipe response."),
+                    HttpStatus.BAD_GATEWAY
+                );
+            }
+        } catch (AISuggestionValidationException e) {
+            log.warn("AI recipe modification failed validation: {}", e.getViolations());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "AI suggestion failed validation", "violations", e.getViolations()));
+        } catch (Exception e) {
+            log.error("Error modifying recipe: {}", e.getMessage(), e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
