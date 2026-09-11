@@ -39,6 +39,13 @@ public class AISuggestionValidator {
     static final int MAX_INSTRUCTION_LENGTH = 2000;
     static final int MAX_INSTRUCTIONS_COUNT = 100;
 
+    public static final List<java.util.Map<String, String>> DEFAULT_SAFETY_SETTINGS = List.of(
+        java.util.Map.of("category", "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold", "BLOCK_MEDIUM_AND_ABOVE"),
+        java.util.Map.of("category", "HARM_CATEGORY_HARASSMENT", "threshold", "BLOCK_MEDIUM_AND_ABOVE"),
+        java.util.Map.of("category", "HARM_CATEGORY_HATE_SPEECH", "threshold", "BLOCK_MEDIUM_AND_ABOVE"),
+        java.util.Map.of("category", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold", "BLOCK_MEDIUM_AND_ABOVE")
+    );
+
     // Pattern stripping script/style elements including their content
     private static final Pattern SCRIPT_STYLE_PATTERN =
             Pattern.compile("<(script|style)[^>]*>[\\s\\S]*?</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);

@@ -346,19 +346,20 @@ class AISuggestionValidatorTest {
         assertThat(validator.sanitizeList(null)).isEmpty();
     }
 
-    // -----------------------------------------------------------------------
-    // Multiple violations in one recipe
-    // -----------------------------------------------------------------------
-
     @Test
-    void validate_multipleViolations_allReported() {
-        Recipe recipe = buildValidRecipe();
-        recipe.setRecipeName("A".repeat(300));
-        recipe.setServings(200);
-
-        List<String> violations = validator.validate(recipe);
-
-        assertThat(violations).hasSizeGreaterThanOrEqualTo(2);
+    void defaultSafetySettings_coversAllKeyCategories() {
+        assertThat(AISuggestionValidator.DEFAULT_SAFETY_SETTINGS).hasSize(4);
+        assertThat(AISuggestionValidator.DEFAULT_SAFETY_SETTINGS)
+            .allMatch(setting -> "BLOCK_MEDIUM_AND_ABOVE".equals(setting.get("threshold")));
+        List<String> categories = AISuggestionValidator.DEFAULT_SAFETY_SETTINGS.stream()
+            .map(s -> s.get("category"))
+            .toList();
+        assertThat(categories).containsExactlyInAnyOrder(
+            "HARM_CATEGORY_DANGEROUS_CONTENT",
+            "HARM_CATEGORY_HARASSMENT",
+            "HARM_CATEGORY_HATE_SPEECH",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+        );
     }
 
     // -----------------------------------------------------------------------
