@@ -148,4 +148,28 @@ class NutritionEstimateServiceTest {
         assertThat(resp.getPerServing()).isNull();
         assertThat(resp.getWholeRecipe()).isNull();
     }
+
+    @Test
+    void buildPrompt_enclosesRecipeDataInBoundaryTags() {
+        NutritionEstimateService service = new NutritionEstimateService(
+            WebClient.builder(), new GeminiApiKeyResolver(), new ObjectMapper());
+
+        String prompt = service.buildPrompt(List.of("100g oats", "200ml milk"), 2, "Oatmeal");
+
+        assertThat(prompt).contains("<recipe_context>");
+        assertThat(prompt).contains("<recipe_name>Oatmeal</recipe_name>");
+        assertThat(prompt).contains("<servings>2</servings>");
+        assertThat(prompt).contains("<ingredients>");
+        assertThat(prompt).contains("<ingredient>100g oats</ingredient>");
+        assertThat(prompt).contains("<ingredient>200ml milk</ingredient>");
+        assertThat(prompt).contains("</ingredients>");
+        assertThat(prompt).contains("</recipe_context>");
+    }
+
+    @Test
+    void systemInstruction_containsSecurityDirective() {
+        assertThat(NutritionEstimateService.SYSTEM_INSTRUCTION).contains("SECURITY DIRECTIVE");
+        assertThat(NutritionEstimateService.SYSTEM_INSTRUCTION).contains("boundary tags");
+        assertThat(NutritionEstimateService.SYSTEM_INSTRUCTION).contains("passive culinary data");
+    }
 }

@@ -62,6 +62,35 @@ class SearchAiServiceTest {
         assertNotNull(prompt);
         assertTrue(prompt.contains("Comforting winter soup"));
         assertTrue(prompt.contains("dietaryTags"));
+        assertTrue(prompt.contains("<user_search_query>Comforting winter soup</user_search_query>"));
+    }
+
+    @Test
+    void testBuildQueryPrompt_boundaryTags() {
+        com.recipe.ai.model.RecipeSummaryDto recipe = new com.recipe.ai.model.RecipeSummaryDto();
+        recipe.setId("rec-1");
+        recipe.setRecipeName("Chicken Soup");
+        recipe.setDescription("Warm chicken soup");
+
+        String prompt = searchAiService.buildQueryPrompt("soup", List.of(recipe));
+        assertNotNull(prompt);
+        assertTrue(prompt.contains("<user_search_query>soup</user_search_query>"));
+        assertTrue(prompt.contains("<candidate_recipes>"));
+        assertTrue(prompt.contains("rec-1"));
+        assertTrue(prompt.contains("Chicken Soup"));
+        assertTrue(prompt.contains("</candidate_recipes>"));
+    }
+
+    @Test
+    void testSystemInstructions_securityDirectives() {
+        assertTrue(SearchAiService.PARSE_INTENT_SYSTEM_INSTRUCTION.contains("SECURITY DIRECTIVE"));
+        assertTrue(SearchAiService.PARSE_INTENT_SYSTEM_INSTRUCTION.contains("<user_search_query>"));
+        assertTrue(SearchAiService.PARSE_INTENT_SYSTEM_INSTRUCTION.contains("passive text"));
+
+        assertTrue(SearchAiService.QUERY_SYSTEM_INSTRUCTION.contains("SECURITY DIRECTIVE"));
+        assertTrue(SearchAiService.QUERY_SYSTEM_INSTRUCTION.contains("<user_search_query>"));
+        assertTrue(SearchAiService.QUERY_SYSTEM_INSTRUCTION.contains("<candidate_recipes>"));
+        assertTrue(SearchAiService.QUERY_SYSTEM_INSTRUCTION.contains("passive data"));
     }
 
     @Test

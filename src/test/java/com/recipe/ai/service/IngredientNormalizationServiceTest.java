@@ -136,4 +136,28 @@ class IngredientNormalizationServiceTest {
         assertThat(resp.getNormalizations().get(0).getIndex()).isZero();
         assertThat(resp.getNormalizations().get(1).getIndex()).isEqualTo(2);
     }
+
+    @Test
+    void buildPrompt_enclosesIngredientsInBoundaryTags() {
+        IngredientNormalizationService service = new IngredientNormalizationService(
+            WebClient.builder(), new GeminiApiKeyResolver(), new com.fasterxml.jackson.databind.ObjectMapper(),
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+
+        String prompt = service.buildPrompt(List.of("1 pinch salt", "some pepper"), "Steak");
+
+        assertThat(prompt).contains("<recipe_context>");
+        assertThat(prompt).contains("<recipe_name>Steak</recipe_name>");
+        assertThat(prompt).contains("<ingredients>");
+        assertThat(prompt).contains("0: 1 pinch salt");
+        assertThat(prompt).contains("1: some pepper");
+        assertThat(prompt).contains("</ingredients>");
+        assertThat(prompt).contains("</recipe_context>");
+    }
+
+    @Test
+    void systemInstruction_containsSecurityDirective() {
+        assertThat(IngredientNormalizationService.SYSTEM_INSTRUCTION).contains("SECURITY DIRECTIVE");
+        assertThat(IngredientNormalizationService.SYSTEM_INSTRUCTION).contains("boundary tags");
+        assertThat(IngredientNormalizationService.SYSTEM_INSTRUCTION).contains("passive culinary data");
+    }
 }
