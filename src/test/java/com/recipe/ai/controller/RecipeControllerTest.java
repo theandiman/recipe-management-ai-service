@@ -17,6 +17,7 @@ import com.recipe.ai.model.FieldSuggestionRequest;
 import com.recipe.ai.model.FieldSuggestionsResponse;
 import com.recipe.shared.model.Recipe;
 import com.recipe.ai.model.RecipeGenerationRequest;
+import com.recipe.ai.model.RecipeModificationRequest;
 import com.recipe.ai.model.ImageGenerationRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,17 @@ public class RecipeControllerTest {
         @Override
         public Map<String, Object> generateImageFromRequest(ImageGenerationRequest request, boolean forceCurl) {
             return Map.of("status", "skipped");
+        }
+
+        @Override
+        public Recipe modifyRecipeModel(RecipeModificationRequest request) {
+            if (request.getCurrentRecipe() == null) {
+                return null;
+            }
+            return Recipe.builder()
+                    .recipeName(request.getCurrentRecipe().getRecipeName() + " (Modified)")
+                    .servings(4)
+                    .build();
         }
     }
 
@@ -225,5 +237,90 @@ public class RecipeControllerTest {
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody()).isNotNull();
         assertThat(resp.getBody().getRefinements()).isEmpty();
+    }
+
+    @Test
+    void modifyRecipe_withValidRequest_returnsModifiedRecipe() {
+        RecipeModificationRequest request = new RecipeModificationRequest();
+        Recipe current = Recipe.builder().recipeName("Pancakes").servings(2).build();
+        request.setCurrentRecipe(current);
+        request.setInstruction("Make it vegan");
+
+        ResponseEntity<?> resp = controller.modifyRecipe(request);
+
+        assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(resp.getBody()).isInstanceOf(Recipe.class);
+        Recipe body = (Recipe) resp.getBody();
+        assertThat(body.getRecipeName()).isEqualTo("Pancakes (Modified)");
+    }
+
+    @Test
+    void modifyRecipe_withNullRecipe_returnsBadRequest() {
+        RecipeModificationRequest request = new RecipeModificationRequest();
+        request.setCurrentRecipe(null);
+        request.setInstruction("Make it vegan");
+
+        ResponseEntity<?> resp = controller.modifyRecipe(request);
+
+        assertThat(resp.getStatusCode().value()).isEqualTo(400);
+        assertThat(resp.getBody()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) resp.getBody();
+        assertThat(body).containsEntry("error", "currentRecipe is required");
+    }
+
+    @Test
+    void modifyRecipe_returnsBadGatewayWhenServiceReturnsNull() {
+        RecipeController failingController = new RecipeController(
+            new TestRecipeService() {
+                @Override
+                public Recipe modifyRecipeModel(RecipeModificationRequest request) {
+                    return null;
+                }
+            },
+            new TestFieldSuggestionService(),
+            new TestInstructionRefinementService(),
+            new NoOpIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
+        );
+        RecipeModificationRequest request = new RecipeModificationRequest();
+        request.setCurrentRecipe(Recipe.builder().recipeName("Pancakes").build());
+        request.setInstruction("Make it vegan");
+
+        ResponseEntity<?> resp = failingController.modifyRecipe(request);
+
+        assertThat(resp.getStatusCode().value()).isEqualTo(502);
+        assertThat(resp.getBody()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) resp.getBody();
+        assertThat(body).containsEntry("message", "AI service returned an invalid recipe response.");
+    }
+
+    @Test
+    void modifyRecipe_returnsBadRequestWhenValidationFails() {
+        RecipeController failingController = new RecipeController(
+            new TestRecipeService() {
+                @Override
+                public Recipe modifyRecipeModel(RecipeModificationRequest request) {
+                    throw new com.recipe.ai.service.AISuggestionValidationException(List.of("Toxic content detected"));
+                }
+            },
+            new TestFieldSuggestionService(),
+            new TestInstructionRefinementService(),
+            new NoOpIngredientNormalizationService(),
+            new NoOpNutritionEstimateService()
+        );
+        RecipeModificationRequest request = new RecipeModificationRequest();
+        request.setCurrentRecipe(Recipe.builder().recipeName("Pancakes").build());
+        request.setInstruction("Make it poisonous");
+
+        ResponseEntity<?> resp = failingController.modifyRecipe(request);
+
+        assertThat(resp.getStatusCode().value()).isEqualTo(400);
+        assertThat(resp.getBody()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) resp.getBody();
+        assertThat(body).containsEntry("error", "AI suggestion failed validation");
+        assertThat(body).containsKey("violations");
     }
 }

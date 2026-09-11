@@ -196,4 +196,47 @@ public class RecipeServiceWebClientTest {
         assertEquals("2 hours", recipe.getTotalTime());
         assertEquals("https://example.com/stew.jpg", recipe.getImageUrl());
     }
+
+    @Test
+    public void testModifyRecipeModel_parsesGeminiResponse() throws Exception {
+        String sample = "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{\\\"recipeName\\\":\\\"Spicy Pancakes\\\",\\\"description\\\":\\\"Pancakes with spice\\\",\\\"ingredients\\\":[\\\"flour\\\",\\\"chili\\\"],\\\"instructions\\\":[\\\"Mix\\\",\\\"Fry\\\"],\\\"servings\\\":2}\"}]}}]}";
+
+        org.springframework.web.reactive.function.client.ExchangeFunction exchange = req -> {
+            org.springframework.web.reactive.function.client.ClientResponse resp =
+                org.springframework.web.reactive.function.client.ClientResponse
+                    .create(org.springframework.http.HttpStatus.OK)
+                    .header("Content-Type", "application/json")
+                    .body(sample)
+                    .build();
+            return Mono.just(resp);
+        };
+
+        WebClient webClient = WebClient.builder().exchangeFunction(exchange).build();
+        WebClient.Builder builder = Mockito.mock(WebClient.Builder.class);
+        Mockito.when(builder.baseUrl(Mockito.any())).thenReturn(builder);
+        Mockito.when(builder.clientConnector(Mockito.any(org.springframework.http.client.reactive.ClientHttpConnector.class))).thenReturn(builder);
+        Mockito.when(builder.exchangeStrategies(Mockito.any(org.springframework.web.reactive.function.client.ExchangeStrategies.class))).thenReturn(builder);
+        Mockito.when(builder.defaultHeader(Mockito.any(), Mockito.any())).thenReturn(builder);
+        Mockito.when(builder.build()).thenReturn(webClient);
+
+        RecipeService service = new RecipeService(builder, new ObjectMapper(), new AISuggestionValidator());
+
+        java.lang.reflect.Field urlField = RecipeService.class.getDeclaredField("geminiApiUrl");
+        urlField.setAccessible(true);
+        urlField.set(service, "https://example.com/mock");
+
+        java.lang.reflect.Field keyField = RecipeService.class.getDeclaredField("geminiApiKey");
+        keyField.setAccessible(true);
+        keyField.set(service, "TEST_API_KEY");
+
+        com.recipe.ai.model.RecipeModificationRequest request = new com.recipe.ai.model.RecipeModificationRequest();
+        request.setCurrentRecipe(com.recipe.shared.model.Recipe.builder().recipeName("Pancakes").build());
+        request.setInstruction("Make it spicy");
+
+        com.recipe.shared.model.Recipe modified = service.modifyRecipeModel(request);
+
+        assertEquals("Spicy Pancakes", modified.getRecipeName());
+        assertEquals("Pancakes with spice", modified.getDescription());
+        assertEquals(List.of("flour", "chili"), modified.getIngredients());
+    }
 }
