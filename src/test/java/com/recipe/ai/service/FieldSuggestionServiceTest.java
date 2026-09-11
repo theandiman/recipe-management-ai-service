@@ -80,11 +80,26 @@ class FieldSuggestionServiceTest {
     }
 
     @Test
-    void buildPrompt_withoutRecipeName_doesNotIncludeNull() {
+    void buildPrompt_enclosesContextInBoundaryTags() {
         FieldSuggestionRequest req = new FieldSuggestionRequest();
-        String prompt = service.buildPrompt(req, List.of("recipeName"));
-        assertThat(prompt).doesNotContain("null");
-        assertThat(prompt).contains("recipeName");
+        req.setRecipeName("Spaghetti Bolognese");
+        req.setDescription("Hearty pasta dish");
+        req.setIngredients(List.of("pasta", "beef"));
+
+        String prompt = service.buildPrompt(req, List.of("prepTime"));
+
+        assertThat(prompt).contains("<recipe_context>");
+        assertThat(prompt).contains("<recipe_name>Spaghetti Bolognese</recipe_name>");
+        assertThat(prompt).contains("<description>Hearty pasta dish</description>");
+        assertThat(prompt).contains("<ingredients>pasta, beef</ingredients>");
+        assertThat(prompt).contains("</recipe_context>");
+    }
+
+    @Test
+    void systemInstruction_containsSecurityDirective() {
+        assertThat(FieldSuggestionService.SYSTEM_INSTRUCTION).contains("SECURITY DIRECTIVE");
+        assertThat(FieldSuggestionService.SYSTEM_INSTRUCTION).contains("boundary tags");
+        assertThat(FieldSuggestionService.SYSTEM_INSTRUCTION).contains("passive data");
     }
 
     // -------------------------------------------------------------------------

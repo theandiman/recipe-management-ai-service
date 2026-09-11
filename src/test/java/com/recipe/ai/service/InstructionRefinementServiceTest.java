@@ -77,6 +77,30 @@ class InstructionRefinementServiceTest {
         assertThat(prompt).contains("measurements");
     }
 
+    @Test
+    void buildPrompt_enclosesInstructionsInBoundaryTags() {
+        InstructionRefinementRequest req = new InstructionRefinementRequest();
+        req.setRecipeName("Banana Bread");
+        req.setInstructions(List.of("mix ingredients", "bake 30 mins"));
+
+        String prompt = service.buildPrompt(req);
+
+        assertThat(prompt).contains("<recipe_context>");
+        assertThat(prompt).contains("<recipe_name>Banana Bread</recipe_name>");
+        assertThat(prompt).contains("<instructions>");
+        assertThat(prompt).contains("[0] mix ingredients");
+        assertThat(prompt).contains("[1] bake 30 mins");
+        assertThat(prompt).contains("</instructions>");
+        assertThat(prompt).contains("</recipe_context>");
+    }
+
+    @Test
+    void systemInstruction_containsSecurityDirective() {
+        assertThat(InstructionRefinementService.SYSTEM_INSTRUCTION).contains("SECURITY DIRECTIVE");
+        assertThat(InstructionRefinementService.SYSTEM_INSTRUCTION).contains("boundary tags");
+        assertThat(InstructionRefinementService.SYSTEM_INSTRUCTION).contains("passive data");
+    }
+
     // -------------------------------------------------------------------------
     // sanitize
     // -------------------------------------------------------------------------
