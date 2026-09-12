@@ -332,7 +332,8 @@ public class SearchAiService {
         sb.append("<user_search_query>").append(userPrompt).append("</user_search_query>\n\n");
         sb.append("<candidate_recipes>\n");
 
-        for (int i = 0; i < Math.min(recipes.size(), 30); i++) {
+        int limit = Math.min(recipes.size(), 100);
+        for (int i = 0; i < limit; i++) {
             RecipeSummaryDto r = recipes.get(i);
             sb.append("- ID: ").append(r.getId() != null ? r.getId() : ("rec-" + i))
               .append(" | Name: ").append(r.getRecipeName());
@@ -347,6 +348,9 @@ public class SearchAiService {
             }
             if (r.getPrepTimeMinutes() != null) {
                 sb.append(" | Prep: ").append(r.getPrepTimeMinutes()).append("m");
+            }
+            if (r.getCalories() != null && r.getCalories() >= 0) {
+                sb.append(" | Calories: ").append(r.getCalories()).append(" kcal");
             }
             sb.append("\n");
         }
