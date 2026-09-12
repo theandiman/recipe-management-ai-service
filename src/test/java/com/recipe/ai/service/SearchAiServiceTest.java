@@ -82,6 +82,48 @@ class SearchAiServiceTest {
     }
 
     @Test
+    void testBuildQueryPrompt_includesCaloriesAndPrepTime() {
+        com.recipe.ai.model.RecipeSummaryDto recipe = new com.recipe.ai.model.RecipeSummaryDto(
+            "rec-42",
+            "Protein Shake",
+            "High protein shake",
+            List.of("High-Protein", "Drinks"),
+            List.of("Whey", "Milk"),
+            5,
+            250
+        );
+
+        String prompt = searchAiService.buildQueryPrompt("post-workout", List.of(recipe));
+        assertNotNull(prompt);
+        assertTrue(prompt.contains("rec-42"));
+        assertTrue(prompt.contains("Protein Shake"));
+        assertTrue(prompt.contains("Prep: 5m"));
+        assertTrue(prompt.contains("Calories: 250 kcal"));
+    }
+
+    @Test
+    void testBuildQueryPrompt_supportsUpTo100Candidates() {
+        List<com.recipe.ai.model.RecipeSummaryDto> recipes = new java.util.ArrayList<>();
+        for (int i = 0; i < 110; i++) {
+            recipes.add(new com.recipe.ai.model.RecipeSummaryDto(
+                "rec-" + i,
+                "Recipe " + i,
+                "Description " + i,
+                List.of("Tag"),
+                List.of("Ing"),
+                10,
+                300
+            ));
+        }
+
+        String prompt = searchAiService.buildQueryPrompt("dinner", recipes);
+        assertNotNull(prompt);
+        assertTrue(prompt.contains("rec-0"));
+        assertTrue(prompt.contains("rec-99"));
+        assertFalse(prompt.contains("rec-100"));
+    }
+
+    @Test
     void testSystemInstructions_securityDirectives() {
         assertTrue(SearchAiService.PARSE_INTENT_SYSTEM_INSTRUCTION.contains("SECURITY DIRECTIVE"));
         assertTrue(SearchAiService.PARSE_INTENT_SYSTEM_INSTRUCTION.contains("<user_search_query>"));
