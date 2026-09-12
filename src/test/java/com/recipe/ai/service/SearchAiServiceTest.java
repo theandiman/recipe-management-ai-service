@@ -182,4 +182,55 @@ class SearchAiServiceTest {
         assertNotNull(response.getSuggestedIdea());
         assertEquals("Creamy Tomato Soup", response.getSuggestedIdea().getTitle());
     }
+
+    @Test
+    void testParseGeminiResponse_FiltersDinnerAndNormalizesLowCarb() {
+        String mockResponse = """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "{\\"queryKeywords\\": \\"\\", \\"dietaryTags\\": [\\"Low Carb\\", \\"Dinner\\", \\"Quick & Easy\\"], \\"maxPrepTime\\": 30, \\"explanation\\": \\"Quick low carb dinner under 30 mins.\\"}"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """;
+
+        AiSearchParseResponse response = searchAiService.parseGeminiResponse(mockResponse, "quick low carb dinner");
+        assertNotNull(response);
+        assertEquals("", response.getQueryKeywords());
+        // "Dinner" should be filtered out, "Low Carb" normalized to "Low-Carb"
+        assertEquals(List.of("Low-Carb", "Quick & Easy"), response.getDietaryTags());
+        assertEquals(30, response.getMaxPrepTime());
+    }
+
+    @Test
+    void testParseGeminiResponse_StripsMoodWordsFromKeywords() {
+        String mockResponse = """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "{\\"queryKeywords\\": \\"comfort food cheese garlic\\", \\"dietaryTags\\": [], \\"explanation\\": \\"Cheesy garlic comfort food.\\"}"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """;
+
+        AiSearchParseResponse response = searchAiService.parseGeminiResponse(mockResponse, "comfort food with cheese and garlic");
+        assertNotNull(response);
+        // "comfort" and "food" should be stripped, leaving "cheese garlic"
+        assertEquals("cheese garlic", response.getQueryKeywords());
+    }
 }
+

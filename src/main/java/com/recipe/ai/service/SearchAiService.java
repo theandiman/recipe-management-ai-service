@@ -132,8 +132,8 @@ public class SearchAiService {
     static final String PARSE_INTENT_SYSTEM_INSTRUCTION = """
         You are a precise culinary search intent parser.
         RULES:
-        1. queryKeywords: Core ingredient or dish name ONLY (e.g. "pasta", "chicken"). Return empty string "" if the request only describes attributes like "quick", "healthy", "low carb", "vegetarian", or prep times!
-        2. dietaryTags: Extract ONLY tags explicitly requested or directly implied, choosing from: [Quick & Easy, Vegetarian, Vegan, Gluten-Free, Low Carb, High Protein, Dairy-Free, Keto, Breakfast, Lunch, Dinner, Dessert]. Return empty [] if none.
+        1. queryKeywords: Core ingredient or dish name ONLY (e.g. "pasta", "chicken"). Return empty string "" if the request only describes attributes or mood like "quick", "healthy", "comfort", "cozy", "dinner", "lunch", "low carb", "vegetarian", or prep times! Do not include filler words like "food", "meal", "recipe", "dish", or mood words.
+        2. dietaryTags: Extract ONLY dietary restrictions or dietary preferences explicitly requested or directly implied, choosing from: [Quick & Easy, Vegetarian, Vegan, Gluten-Free, Low-Carb, High Protein, Dairy-Free, Keto, Nut-Free]. Return empty [] if none. Do NOT return meal types (Breakfast, Lunch, Dinner) as dietary tags.
         3. maxPrepTime: Extract maximum minutes as integer ONLY if explicitly stated (e.g. "under 30 mins" -> 30). Leave as null if unspecified.
         4. maxCalories: Extract calorie limit per serving as integer ONLY if explicitly specified. Leave as null if unspecified.
         5. explanation: Brief 1-sentence friendly explanation of the parsed search intent.
@@ -205,14 +205,32 @@ public class SearchAiService {
             Integer maxPrepTime = maxPrepTimeNum != null ? maxPrepTimeNum.intValue() : null;
             Integer maxCalories = maxCaloriesNum != null ? maxCaloriesNum.intValue() : null;
 
-            // Sanitize queryKeywords: if it's redundant with an extracted dietary tag or attribute word, clear it
+            // Sanitize queryKeywords: strip attribute words, mood words, and filler words
             if (queryKeywords != null && !queryKeywords.isBlank()) {
                 String kwLower = queryKeywords.trim().toLowerCase();
-                boolean matchesAttribute = List.of("quick", "easy", "quick & easy", "healthy", "low carb", "vegetarian", "vegan", "keto", "dinner", "lunch", "breakfast")
-                        .contains(kwLower);
+                boolean matchesAttribute = List.of(
+                        "quick", "easy", "quick & easy", "healthy", "low carb", "low-carb",
+                        "vegetarian", "vegan", "keto", "dinner", "lunch", "breakfast", "supper",
+                        "meal", "food", "comfort", "cozy", "hearty", "snack"
+                ).contains(kwLower);
                 if (matchesAttribute || (dietaryTags != null && dietaryTags.stream().anyMatch(t -> t.toLowerCase().contains(kwLower)))) {
                     queryKeywords = "";
+                } else {
+                    queryKeywords = queryKeywords
+                            .replaceAll("(?i)\\b(?:comfort(?:ing)?|cozy|hearty|quick|easy|healthy|delicious|tasty)\\b", "")
+                            .replaceAll("(?i)\\b(?:food|foods|dish|dishes|meal|meals|recipe|recipes|dinner|lunch|breakfast)\\b", "")
+                            .trim()
+                            .replaceAll("\\s+", " ");
                 }
+            }
+
+            // Normalize and sanitize dietary tags (ensure canonical names, filter non-dietary meal types)
+            if (dietaryTags != null) {
+                dietaryTags = dietaryTags.stream()
+                        .map(t -> "Low Carb".equalsIgnoreCase(t) ? "Low-Carb" : t)
+                        .filter(t -> !"Dinner".equalsIgnoreCase(t) && !"Lunch".equalsIgnoreCase(t))
+                        .distinct()
+                        .toList();
             }
 
             return new AiSearchParseResponse(queryKeywords != null ? queryKeywords : "", dietaryTags != null ? dietaryTags : List.of(), maxPrepTime, maxCalories, explanation);
